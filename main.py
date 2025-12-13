@@ -89,12 +89,7 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
             embed.add_field(
                 name="💵 **VALOR EM REAIS**",
                 value=f"```💰 R$ {valor_reais:,.2f}```",
-                inline=True
-            )
-            embed.add_field(
-                name="📊 **TAXA POR ROBUX**",
-                value=f"```📈 R$ {ROBUX_RATE:.3f}```",
-                inline=True
+                inline=False
             )
             embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
             embed.add_field(
@@ -176,12 +171,7 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
             embed.add_field(
                 name="🎁 **ROBUX QUE VOCÊ RECEBE**",
                 value=f"```💎 {robux_liquidos:,} Robux```",
-                inline=True
-            )
-            embed.add_field(
-                name="📊 **TAXA POR ROBUX**",
-                value=f"```📈 R$ {ROBUX_RATE:.3f}```",
-                inline=True
+                inline=False
             )
             embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
             embed.add_field(
