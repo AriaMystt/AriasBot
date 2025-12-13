@@ -1070,10 +1070,12 @@ async def painelcalculadora(ctx, channel: discord.TextChannel = None):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def limpartickets(ctx):
+    data = {"usuarios": {}}
     with open("tickets.json", "w", encoding="utf-8") as f:
-        f.write("{}")
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
     await ctx.send("🧹 tickets.json limpo com sucesso.")
+
 
 
 
