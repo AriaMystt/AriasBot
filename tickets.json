@@ -1,0 +1,80 @@
+{
+    "usuarios": {
+        "1142163891502186638": {
+            "tickets": [
+                {
+                    "canal_id": 1449439760937390217,
+                    "tipo": "robux",
+                    "status": "fechado",
+                    "criado_em": "2025-12-13T16:36:17.503962",
+                    "cliente_nome": "f4max571_74871",
+                    "confirmado_por": 796599904411058216,
+                    "confirmado_por_nome": "aria.jpeg_",
+                    "confirmado_em": "2025-12-13T16:47:51.833832",
+                    "fechado_em": "2025-12-13T16:49:39.783071",
+                    "fechado_por": 796599904411058216,
+                    "fechado_por_nome": "aria.jpeg_"
+                }
+            ],
+            "ticket_aberto": false
+        },
+        "546782801173938202": {
+            "tickets": [
+                {
+                    "canal_id": 1449440331094298856,
+                    "tipo": "gamepass",
+                    "status": "fechado",
+                    "criado_em": "2025-12-13T16:38:33.388678",
+                    "cliente_nome": "sadhat",
+                    "confirmado_por": 796599904411058216,
+                    "confirmado_por_nome": "aria.jpeg_",
+                    "confirmado_em": "2025-12-13T16:52:08.459265",
+                    "fechado_em": "2025-12-13T16:52:29.683653",
+                    "fechado_por": 796599904411058216,
+                    "fechado_por_nome": "aria.jpeg_"
+                }
+            ],
+            "ticket_aberto": false
+        },
+        "760912485238046750": {
+            "tickets": [
+                {
+                    "canal_id": 1449449472781189281,
+                    "tipo": "robux",
+                    "status": "fechado",
+                    "criado_em": "2025-12-13T17:14:52.783178",
+                    "cliente_nome": "baconmolhado._.",
+                    "confirmado_por": 796599904411058216,
+                    "confirmado_por_nome": "aria.jpeg_",
+                    "confirmado_em": "2025-12-13T17:24:59.933753",
+                    "fechado_em": "2025-12-13T17:25:07.030353",
+                    "fechado_por": 796599904411058216,
+                    "fechado_por_nome": "aria.jpeg_"
+                },
+                {
+                    "canal_id": 1449453125491490998,
+                    "tipo": "gamepass",
+                    "status": "cancelado",
+                    "criado_em": "2025-12-13T17:29:23.770690",
+                    "cliente_nome": "baconmolhado._.",
+                    "fechado_em": "2025-12-13T17:29:30.359456",
+                    "fechado_por": 760912485238046750
+                },
+                {
+                    "canal_id": 1449453204709445816,
+                    "tipo": "robux",
+                    "status": "fechado",
+                    "criado_em": "2025-12-13T17:29:42.584463",
+                    "cliente_nome": "baconmolhado._.",
+                    "confirmado_por": 796599904411058216,
+                    "confirmado_por_nome": "aria.jpeg_",
+                    "confirmado_em": "2025-12-13T17:36:49.070836",
+                    "fechado_em": "2025-12-13T17:36:52.753831",
+                    "fechado_por": 796599904411058216,
+                    "fechado_por_nome": "aria.jpeg_"
+                }
+            ],
+            "ticket_aberto": false
+        }
+    }
+}
