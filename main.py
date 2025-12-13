@@ -1067,6 +1067,15 @@ async def painelcalculadora(ctx, channel: discord.TextChannel = None):
     )
     await ctx.send(embed=embed_confirma, delete_after=10)
 
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def limpartickets(ctx):
+    with open("tickets.json", "w", encoding="utf-8") as f:
+        f.write("{}")
+
+    await ctx.send("🧹 tickets.json limpo com sucesso.")
+
+
 
 # ======================
 # EVENTOS DO BOT
