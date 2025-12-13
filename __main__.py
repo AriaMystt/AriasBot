@@ -4,11 +4,15 @@ import random
 from datetime import datetime
 import json
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # ======================
 # CONFIGURAÇÕES
 # ======================
-TOKEN = "MTQ0OTMwMTcyMDkzNTk2MDY3Mg.GdHv9m.p4uwWR9D8CK_QH-0_7RmknuN-wLb7JPG3k1gCA"
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 intents = discord.Intents.default()
 intents.message_content = True
