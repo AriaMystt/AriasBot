@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import random
 from datetime import datetime
 import json
@@ -37,15 +38,11 @@ PURCHASE_COUNT_FILE = "compras.json"
 
 def calcular_valor_gamepass(robux):
     """Calcula o valor da gamepass considerando a taxa de 30% do Roblox."""
-    # Para obter X robux líquidos, precisamos criar uma gamepass de valor Y
-    # onde Y * 0.7 = X (Roblox pega 30%)
-    # Portanto: Y = X / 0.7
     valor_gamepass = robux / (1 - ROBLOX_TAX)
     return round(valor_gamepass)
 
 def calcular_robux_liquidos(valor_gamepass):
     """Calcula quantos robux líquidos recebe de uma gamepass."""
-    # Robux líquidos = Valor da gamepass * (1 - taxa)
     robux_liquidos = valor_gamepass * (1 - ROBLOX_TAX)
     return round(robux_liquidos)
 
@@ -65,7 +62,6 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
         try:
             robux_liquidos = int(self.robux.value)
             
-            # Validação
             if robux_liquidos <= 0:
                 await interaction.response.send_message(
                     "🤔 **Oops!** Você precisa digitar um número maior que zero!",
@@ -73,16 +69,9 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
                 )
                 return
             
-            # Calcula valor em reais
             valor_reais = robux_liquidos * ROBUX_RATE
-            
-            # Calcula valor da gamepass necessário
             valor_gamepass = calcular_valor_gamepass(robux_liquidos)
-            
-            # Calcula quanto o Roblox vai pegar
             taxa_roblox = valor_gamepass - robux_liquidos
-            
-            # Percentual da taxa
             percentual_taxa = (taxa_roblox / valor_gamepass) * 100
             
             embed = discord.Embed(
@@ -92,59 +81,38 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
             )
             
             embed.description = "✨ **Aqui está o seu cálculo detalhado!** ✨"
-            
-            # Seção principal
             embed.add_field(
                 name="📦 **SEU PEDIDO**",
                 value=f"```💎 {robux_liquidos:,} Robux Líquidos```",
                 inline=False
             )
-            
-            # Seção de valores
             embed.add_field(
                 name="💵 **VALOR EM REAIS**",
                 value=f"```💰 R$ {valor_reais:,.2f}```",
                 inline=True
             )
-            
             embed.add_field(
                 name="📊 **TAXA POR ROBUX**",
                 value=f"```📈 R$ {ROBUX_RATE:.3f}```",
                 inline=True
             )
-            
-            embed.add_field(
-                name="\u200b",
-                value="━━━━━━━━━━━━━━━━━━━━",
-                inline=False
-            )
-            
-            # Seção da Gamepass
+            embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
             embed.add_field(
                 name="🎯 **VALOR DA GAMEPASS**",
                 value=f"```🎮 {valor_gamepass:,} Robux```",
                 inline=False
             )
-            
             embed.add_field(
                 name="🏛️ **TAXA DO ROBLOX**",
                 value=f"```📉 {taxa_roblox:,} Robux ({percentual_taxa:.0f}%)```",
                 inline=True
             )
-            
             embed.add_field(
                 name="🎁 **VOCÊ RECEBE**",
                 value=f"```💎 {robux_liquidos:,} Robux```",
                 inline=True
             )
-            
-            embed.add_field(
-                name="\u200b",
-                value="━━━━━━━━━━━━━━━━━━━━",
-                inline=False
-            )
-            
-            # Explicação
+            embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
             embed.add_field(
                 name="💡 **COMO FUNCIONA?**",
                 value=f"""
@@ -155,12 +123,10 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
                 """,
                 inline=False
             )
-            
             embed.set_footer(
                 text=f"✨ Cálculo feito para {interaction.user.name} • 💰",
                 icon_url=interaction.user.avatar.url if interaction.user.avatar else None
             )
-            
             embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432609128488.gif")
 
             await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -183,7 +149,6 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
         try:
             valor_reais = float(self.reais.value)
             
-            # Validação
             if valor_reais <= 0:
                 await interaction.response.send_message(
                     "🤔 **Hmm...** O valor precisa ser maior que zero! Tente novamente!",
@@ -191,16 +156,9 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
                 )
                 return
             
-            # Calcula robux líquidos
             robux_liquidos = round(valor_reais / ROBUX_RATE)
-            
-            # Calcula valor da gamepass necessário
             valor_gamepass = calcular_valor_gamepass(robux_liquidos)
-            
-            # Calcula quanto o Roblox vai pegar
             taxa_roblox = valor_gamepass - robux_liquidos
-            
-            # Percentual da taxa
             percentual_taxa = (taxa_roblox / valor_gamepass) * 100
             
             embed = discord.Embed(
@@ -210,57 +168,41 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
             )
             
             embed.description = "✨ **Transformando seu dinheiro em Robux!** ✨"
-            
-            # Seção principal
             embed.add_field(
                 name="💵 **SEU INVESTIMENTO**",
                 value=f"```💰 R$ {valor_reais:,.2f}```",
                 inline=False
             )
-            
-            # Seção de valores
             embed.add_field(
                 name="🎁 **ROBUX QUE VOCÊ RECEBE**",
                 value=f"```💎 {robux_liquidos:,} Robux```",
                 inline=True
             )
-            
             embed.add_field(
                 name="📊 **TAXA POR ROBUX**",
                 value=f"```📈 R$ {ROBUX_RATE:.3f}```",
                 inline=True
             )
-            
-            embed.add_field(
-                name="\u200b",
-                value="━━━━━━━━━━━━━━━━━━━━",
-                inline=False
-            )
-            
-            # Seção da Gamepass
+            embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
             embed.add_field(
                 name="🎯 **VALOR DA GAMEPASS**",
                 value=f"```🎮 {valor_gamepass:,} Robux```",
                 inline=False
             )
-            
             embed.add_field(
                 name="🏛️ **TAXA DO ROBLOX**",
                 value=f"```📉 {taxa_roblox:,} Robux ({percentual_taxa:.0f}%)```",
                 inline=True
             )
-            
             embed.add_field(
                 name="💎 **VOCÊ RECEBE**",
                 value=f"```💎 {robux_liquidos:,} Robux```",
                 inline=True
             )
-            
             embed.set_footer(
                 text=f"✨ Conversão para {interaction.user.name} • ⚡",
                 icon_url=interaction.user.avatar.url if interaction.user.avatar else None
             )
-            
             embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432609128488.gif")
 
             await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -360,7 +302,6 @@ class PurchaseSelect(discord.ui.Select):
         data["usuarios"][uid]["ticket_aberto"] = True
         save_json(TICKETS_FILE, data)
 
-        # Embed de boas-vindas ao ticket
         embed_ticket = discord.Embed(
             title=f"🎫 **TICKET DE {tipo_compra.upper()} ABERTO!**",
             description=f"""
@@ -386,24 +327,20 @@ class PurchaseSelect(discord.ui.Select):
             value="Nossa equipe foi notificada e já vai te atender! ⚡",
             inline=True
         )
-
         embed_ticket.add_field(
             name="**💡 DICA IMPORTANTE:**",
             value="Use nossa calculadora em <#1448903135333449828> para calcular o valor exato da gamepass!",
             inline=True
         )
-        
         embed_ticket.add_field(
             name="🔧 **BOTÕES DISPONÍVEIS**",
             value="Use os botões abaixo para gerenciar seu ticket!",
             inline=True
         )
-        
         embed_ticket.set_footer(
             text=f"Atendimento VIP para {user.name} • Obrigado por escolher nossa loja!",
             icon_url=user.avatar.url if user.avatar else None
         )
-        
         embed_ticket.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
 
         await channel.send(
@@ -412,7 +349,6 @@ class PurchaseSelect(discord.ui.Select):
             view=TicketButtons()
         )
 
-        # Mensagem de confirmação para o usuário
         embed_confirma = discord.Embed(
             title="✅ **TICKET CRIADO COM SUCESSO!**",
             description=f"""
@@ -493,12 +429,10 @@ class TicketButtons(discord.ui.View):
         data["usuarios"][uid]["ticket_aberto"] = False
         save_json(TICKETS_FILE, data)
 
-        # Atualizar contagem de compras
         compras = load_json(PURCHASE_COUNT_FILE, {})
         compras[uid] = compras.get(uid, 0) + 1
         save_json(PURCHASE_COUNT_FILE, compras)
 
-        # Notificar o cliente via DM
         cliente = interaction.guild.get_member(int(uid))
         if cliente:
             try:
@@ -529,7 +463,6 @@ class TicketButtons(discord.ui.View):
             except:
                 pass
 
-        # Log no canal de logs
         log = discord.Embed(
             title="📋 **LOG: PAGAMENTO CONFIRMADO**",
             description="Um pagamento foi confirmado com sucesso! ✅",
@@ -542,11 +475,9 @@ class TicketButtons(discord.ui.View):
         log.add_field(name="🕒 Aberto em", value=datetime.fromisoformat(ticket["criado_em"]).strftime('%d/%m %H:%M'), inline=True)
         log.add_field(name="✅ Confirmado por", value=interaction.user.mention, inline=True)
         log.add_field(name="📊 Total de compras", value=f"`{compras.get(uid, 0)}` compras", inline=True)
-        
         log.set_footer(text=f"Staff: {interaction.user.name} • Sistema de Logs")
         await self.send_log(interaction.guild, log)
 
-        # Embed de confirmação no ticket
         embed_confirma = discord.Embed(
             title="✅ **PAGAMENTO CONFIRMADO COM SUCESSO!**",
             description=f"""
@@ -605,7 +536,6 @@ class TicketButtons(discord.ui.View):
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Staff", value=interaction.user.mention, inline=True)
         log.add_field(name="📌 Status", value="🟡 **PENDENTE**", inline=True)
-        
         await self.send_log(interaction.guild, log)
 
         await interaction.response.send_message(
@@ -651,10 +581,8 @@ class TicketButtons(discord.ui.View):
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Cliente", value=interaction.user.mention, inline=True)
         log.add_field(name="📌 Status", value="🔴 **CANCELADO**", inline=True)
-        
         await self.send_log(interaction.guild, log)
 
-        # Embed de cancelamento
         embed_cancelado = discord.Embed(
             title="❌ **COMPRA CANCELADA**",
             description=f"""
@@ -724,10 +652,8 @@ class TicketButtons(discord.ui.View):
         log.add_field(name="📌 Status", value="🔵 **FECHADO**", inline=True)
         log.add_field(name="⏰ Duração", value=f"`{(datetime.utcnow() - datetime.fromisoformat(ticket['criado_em'])).seconds//60} minutos`", inline=True)
         log.add_field(name="💰 Tipo", value=ticket["tipo"].capitalize(), inline=True)
-        
         await self.send_log(interaction.guild, log)
 
-        # Embed de encerramento
         embed_fechado = discord.Embed(
             title="🔒 **TICKET ENCERRADO**",
             description=f"""
@@ -800,19 +726,17 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 # ======================
-# COMANDOS ADICIONAIS
+# COMANDOS HÍBRIDOS (PREFIXO E SLASH)
 # ======================
 
-@bot.command(name="calcular", aliases=["calc", "converter"])
+@bot.hybrid_command(name="calcular", description="Calcula o valor da gamepass necessário para obter X robux líquidos")
+@app_commands.describe(valor="Valor em Robux ou Reais (ex: 1000 ou 35,00)")
 async def calcular(ctx, valor: str):
     """Calcula o valor da gamepass necessário para obter X robux líquidos."""
     try:
-        # Remove possíveis pontos de milhar e substitui vírgula por ponto
         valor_clean = valor.replace('.', '').replace(',', '.')
         
-        # Tenta converter para número
         if '.' in valor_clean:
-            # Se tem ponto decimal, é um valor em reais
             valor_reais = float(valor_clean)
             robux_liquidos = round(valor_reais / ROBUX_RATE)
             valor_gamepass = calcular_valor_gamepass(robux_liquidos)
@@ -831,13 +755,11 @@ async def calcular(ctx, valor: str):
                 value=f"```💰 R$ {valor_reais:,.2f}```",
                 inline=False
             )
-            
             embed.add_field(
                 name="💎 **ROBUX QUE VOCÊ RECEBE**",
                 value=f"```💎 {robux_liquidos:,} Robux```",
                 inline=True
             )
-            
             embed.add_field(
                 name="🎮 **VALOR DA GAMEPASS**",
                 value=f"```🎮 {valor_gamepass:,} Robux```",
@@ -845,7 +767,6 @@ async def calcular(ctx, valor: str):
             )
             
         else:
-            # Se não tem ponto decimal, é um valor em robux
             robux_liquidos = int(valor_clean)
             valor_reais = robux_liquidos * ROBUX_RATE
             valor_gamepass = calcular_valor_gamepass(robux_liquidos)
@@ -864,13 +785,11 @@ async def calcular(ctx, valor: str):
                 value=f"```💎 {robux_liquidos:,} Robux```",
                 inline=False
             )
-            
             embed.add_field(
                 name="💵 **VALOR EM REAIS**",
                 value=f"```💰 R$ {valor_reais:,.2f}```",
                 inline=True
             )
-            
             embed.add_field(
                 name="🎮 **VALOR DA GAMEPASS**",
                 value=f"```🎮 {valor_gamepass:,} Robux```",
@@ -878,7 +797,7 @@ async def calcular(ctx, valor: str):
             )
         
         embed.set_footer(
-            text=f"✨ Calculado para {ctx.author.name} • ⚡ Use #🛒〃compre-aqui para comprar!",
+            text=f"✨ Calculado para {ctx.author.name} • ⚡ Use /comprar para abrir um ticket!",
             icon_url=ctx.author.avatar.url if ctx.author.avatar else None
         )
         
@@ -888,70 +807,32 @@ async def calcular(ctx, valor: str):
         embed_erro = discord.Embed(
             title="❌ **VALOR INVÁLIDO!**",
             description="""
-            
             **📝 FORMATOS ACEITOS:**
-            • `!calcular 1000` → Calcula quanto custa 1000 Robux
-            • `!calcular 35,00` → Calcula quantos Robux você compra com R$ 35
+            • `/calcular 1000` → Calcula quanto custa 1000 Robux
+            • `/calcular 35,00` → Calcula quantos Robux você compra com R$ 35
             
             **💡 DICA:**
-            Use a <#1448903135333449828> com botões para uma experiência mais fácil!
+            Use `/calculadora` para uma experiência mais fácil com botões!
             """,
             color=discord.Color.red()
         )
         await ctx.send(embed=embed_erro)
 
 
-# ======================
-# COMANDOS ADMINISTRATIVOS
-# ======================
-
-@bot.command()
+@bot.hybrid_command(name="compras", description="Mostra o histórico de compras")
+@app_commands.describe(usuario="Usuário para verificar histórico (opcional)")
 @commands.has_permissions(administrator=True)
-async def painelcompras(ctx, channel: discord.TextChannel = None):
-    """Envia o painel de compras em um canal específico."""
-    if channel is None:
-        channel = ctx.channel
-    
-    embed = discord.Embed(
-        title="**PAINEL DE COMPRAS**",
-        description="""
-        ✨ **SEJA BEM-VINDO À NOSSA LOJA!** ✨
-        
-        **🚀 COMO FUNCIONA?**
-        1. Selecione abaixo o que quer comprar
-        2. Abra um ticket de atendimento
-        3. Nossa equipe te atende rapidinho!
-        4. Receba seu produto em minutos! ⏰
-        """,
-        color=discord.Color.blurple()
-    )
-    
-    embed.set_footer(text="💡 Use nossa calculadora em #💱〃calculadora para calcular o valor exato da gamepass!")
-    embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
-    
-    await channel.send(embed=embed, view=PurchaseView())
-    
-    embed_confirma = discord.Embed(
-        title="✅ **PAINEL ENVIADO!**",
-        description=f"✨ **Perfeito!** O painel de compras foi enviado para {channel.mention}!",
-        color=discord.Color.green()
-    )
-    await ctx.send(embed=embed_confirma, delete_after=10)
-
-
-@bot.command(name="compras", aliases=["historico", "vendas"])
-@commands.has_permissions(administrator=True)
-async def compras(ctx, user_id: discord.Member = None):
+async def compras(ctx, usuario: discord.Member = None):
     """Mostra o histórico de compras de um usuário ou de todos."""
     with open("compras.json", "r", encoding="utf-8") as f:
         dados = json.load(f)
 
-    if user_id:
-        total = dados.get(str(user_id), 0)
+    if usuario:
+        total = dados.get(str(usuario.id), 0)
         
         embed = discord.Embed(
             title=f"📊 **HISTÓRICO DE COMPRAS**",
-            description=f"**👤 CLIENTE:** <@{user_id}>",
+            description=f"**👤 CLIENTE:** {usuario.mention}",
             color=discord.Color.blue()
         )
         
@@ -993,7 +874,6 @@ async def compras(ctx, user_id: discord.Member = None):
             color=discord.Color.blue()
         )
         
-        # Ordenar por número de compras
         dados_ordenados = sorted(dados.items(), key=lambda x: x[1], reverse=True)
         
         total_compras = sum(dados.values())
@@ -1011,7 +891,6 @@ async def compras(ctx, user_id: discord.Member = None):
             inline=False
         )
         
-        # Top 10 clientes
         top_clientes = []
         for i, (uid, total) in enumerate(dados_ordenados[:10], 1):
             membro = ctx.guild.get_member(int(uid))
@@ -1030,12 +909,106 @@ async def compras(ctx, user_id: discord.Member = None):
         await ctx.send(embed=embed)
 
 
-@bot.command()
+# ======================
+# COMANDOS SLASH ESPECÍFICOS
+# ======================
+
+@bot.tree.command(name="calculadora", description="Abre a calculadora interativa de Robux/Reais")
+async def calculadora(interaction: discord.Interaction):
+    """Slash command para abrir a calculadora."""
+    embed = discord.Embed(
+        title="**CALCULADORA DE ROBUX**",
+        description="""
+        **🎯 COMO FUNCIONA?**
+        Nosso sistema calcula **automaticamente** o valor da gamepass necessária,
+        considerando a **taxa de 30%** que o Roblox cobra!
+        
+        **💰 ROBUX → REAIS**
+        • Descubra quanto custa X Robux em Reais
+        • Veja o valor exato da gamepass necessária
+        
+        **💸 REAIS → ROBUX**
+        • Veja quantos Robux você compra com X Reais
+        • Veja o valor exato da gamepass necessária
+        """,
+        color=discord.Color.gold()
+    )
+    
+    embed.set_footer(text="Também use `/calcular [valor]` - Ex: `/calcular 1000` ou `/calcular 35,00`")
+    embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432609128488.gif")
+
+    await interaction.response.send_message(embed=embed, view=CalculatorView(), ephemeral=True)
+
+
+@bot.tree.command(name="comprar", description="Abre um ticket para comprar Robux ou Gamepass")
+async def comprar(interaction: discord.Interaction):
+    """Slash command para abrir um ticket de compra."""
+    embed = discord.Embed(
+        title="**PAINEL DE COMPRAS**",
+        description="""
+        ✨ **SEJA BEM-VINDO À NOSSA LOJA!** ✨
+        
+        **🚀 COMO FUNCIONA?**
+        1. Selecione abaixo o que quer comprar
+        2. Abra um ticket de atendimento
+        3. Nossa equipe te atende rapidinho!
+        4. Receba seu produto em minutos! ⏰
+        """,
+        color=discord.Color.blurple()
+    )
+    
+    embed.set_footer(text="💡 Use nossa calculadora com `/calculadora` para calcular o valor exato da gamepass!")
+    embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
+    
+    await interaction.response.send_message(embed=embed, view=PurchaseView(), ephemeral=True)
+
+
+# ======================
+# COMANDOS ADMINISTRATIVOS
+# ======================
+
+@bot.hybrid_command(name="painelcompras", description="Envia o painel de compras em um canal específico")
+@app_commands.describe(canal="Canal onde enviar o painel (opcional)")
 @commands.has_permissions(administrator=True)
-async def painelcalculadora(ctx, channel: discord.TextChannel = None):
+async def painelcompras(ctx, canal: discord.TextChannel = None):
+    """Envia o painel de compras em um canal específico."""
+    if canal is None:
+        canal = ctx.channel
+    
+    embed = discord.Embed(
+        title="**PAINEL DE COMPRAS**",
+        description="""
+        ✨ **SEJA BEM-VINDO À NOSSA LOJA!** ✨
+        
+        **🚀 COMO FUNCIONA?**
+        1. Selecione abaixo o que quer comprar
+        2. Abra um ticket de atendimento
+        3. Nossa equipe te atende rapidinho!
+        4. Receba seu produto em minutos! ⏰
+        """,
+        color=discord.Color.blurple()
+    )
+    
+    embed.set_footer(text="💡 Use nossa calculadora em #💱〃calculadora para calcular o valor exato da gamepass!")
+    embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
+    
+    await canal.send(embed=embed, view=PurchaseView())
+    
+    embed_confirma = discord.Embed(
+        title="✅ **PAINEL ENVIADO!**",
+        description=f"✨ **Perfeito!** O painel de compras foi enviado para {canal.mention}!",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed_confirma, ephemeral=True)
+
+
+@bot.hybrid_command(name="painelcalculadora", description="Envia o painel da calculadora de conversão")
+@app_commands.describe(canal="Canal onde enviar o painel (opcional)")
+@commands.has_permissions(administrator=True)
+async def painelcalculadora(ctx, canal: discord.TextChannel = None):
     """Envia o painel da calculadora de conversão em um canal específico."""
-    if channel is None:
-        channel = ctx.channel
+    if canal is None:
+        canal = ctx.channel
     
     embed = discord.Embed(
         title="**CALCULADORA DE ROBUX**",
@@ -1055,37 +1028,42 @@ async def painelcalculadora(ctx, channel: discord.TextChannel = None):
         color=discord.Color.gold()
     )
     
-    embed.set_footer(text="Também use `!calcular [valor]` - Ex: `!calcular 1000` ou `!calcular 35,00`")
+    embed.set_footer(text="Também use `/calcular [valor]` - Ex: `/calcular 1000` ou `/calcular 35,00`")
     embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432609128488.gif")
 
-    await channel.send(embed=embed, view=CalculatorView())
+    await canal.send(embed=embed, view=CalculatorView())
     
     embed_confirma = discord.Embed(
         title="✅ **CALCULADORA ENVIADA!**",
-        description=f"✨ **Perfeito!** A calculadora foi enviada para {channel.mention}!",
+        description=f"✨ **Perfeito!** A calculadora foi enviada para {canal.mention}!",
         color=discord.Color.green()
     )
-    await ctx.send(embed=embed_confirma, delete_after=10)
+    await ctx.send(embed=embed_confirma, ephemeral=True)
 
-@bot.command()
+
+@bot.hybrid_command(name="limpartickets", description="Limpa todos os dados de tickets")
 @commands.has_permissions(administrator=True)
 async def limpartickets(ctx):
+    """Limpa o arquivo de tickets."""
     data = {"usuarios": {}}
     with open("tickets.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
-    await ctx.send("🧹 tickets.json limpo com sucesso.")
+    await ctx.send("🧹 tickets.json limpo com sucesso.", ephemeral=True)
 
-@bot.command()
+
+@bot.hybrid_command(name="adicionarcompra", description="Adiciona uma compra ao histórico de um usuário")
+@app_commands.describe(usuario="Usuário para adicionar compra")
 @commands.has_permissions(administrator=True)
-async def adicionarcompra(ctx, user_id: int):
+async def adicionarcompra(ctx, usuario: discord.User):
+    """Adiciona uma compra ao histórico de um usuário."""
     try:
         with open("compras.json", "r", encoding="utf-8") as f:
             data = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         data = {}
 
-    uid = str(user_id)
+    uid = str(usuario.id)
 
     if uid not in data:
         data[uid] = 0
@@ -1095,7 +1073,16 @@ async def adicionarcompra(ctx, user_id: int):
     with open("compras.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
-    await ctx.send(f"🧾 Compra adicionada com sucesso para o ID `{user_id}`.")
+    await ctx.send(f"🧾 Compra adicionada com sucesso para {usuario.mention}.", ephemeral=True)
+
+
+@bot.hybrid_command(name="sync", description="Sincroniza os comandos slash (apenas dono)")
+@commands.is_owner()
+async def sync(ctx):
+    """Sincroniza os comandos slash com o Discord."""
+    await bot.tree.sync()
+    await ctx.send("✅ Comandos slash sincronizados com sucesso!", ephemeral=True)
+
 
 # ======================
 # EVENTOS DO BOT
@@ -1109,6 +1096,10 @@ async def on_ready():
     print(f"📊 Servidores: {len(bot.guilds)}")
     print(f"👥 Usuários: {sum(g.member_count for g in bot.guilds)}")
     print("✅ Bot está pronto para uso! 🚀")
+    
+    # Sincronizar comandos slash
+    await bot.tree.sync()
+    print("✅ Comandos slash sincronizados!")
     
     # Definir status do bot
     await bot.change_presence(
