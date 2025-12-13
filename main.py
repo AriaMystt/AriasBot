@@ -941,17 +941,17 @@ async def painelcompras(ctx, channel: discord.TextChannel = None):
 
 @bot.command(name="compras", aliases=["historico", "vendas"])
 @commands.has_permissions(administrator=True)
-async def compras(ctx, usuario: discord.Member = None):
+async def compras(ctx, user_id: discord.Member = None):
     """Mostra o histórico de compras de um usuário ou de todos."""
     with open("compras.json", "r", encoding="utf-8") as f:
         dados = json.load(f)
 
-    if usuario:
-        total = dados.get(str(usuario.id), 0)
+    if user_id:
+        total = dados.get(str(user_id), 0)
         
         embed = discord.Embed(
             title=f"📊 **HISTÓRICO DE COMPRAS**",
-            description=f"**👤 CLIENTE:** {usuario.mention}",
+            description=f"**👤 CLIENTE:** <@{user_id}>",
             color=discord.Color.blue()
         )
         
@@ -1076,8 +1076,26 @@ async def limpartickets(ctx):
 
     await ctx.send("🧹 tickets.json limpo com sucesso.")
 
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def adicionarcompra(ctx, user_id: int):
+    try:
+        with open("compras.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
 
+    uid = str(user_id)
 
+    if uid not in data:
+        data[uid] = 0
+
+    data[uid] += 1
+
+    with open("compras.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+    await ctx.send(f"🧾 Compra adicionada com sucesso para o ID `{user_id}`.")
 
 # ======================
 # EVENTOS DO BOT
