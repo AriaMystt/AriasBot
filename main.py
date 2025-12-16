@@ -1095,7 +1095,7 @@ async def on_ready():
     await bot.change_presence(
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="Robux barato e seguro • Aria's Shop 💎"
+            name="Robux barato e seguro 💎"
         ),
         status=discord.Status.online
     )
