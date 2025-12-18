@@ -768,24 +768,12 @@ class TicketButtons(discord.ui.View):
             )
         
         # Adicionar informação sobre o cargo
-        if cargo_adicionado:
-            embed_confirma.add_field(
-                name="**🏆 CARGO ATRIBUÍDO:**",
-                value=f"✅ O cargo de cliente foi adicionado para {cliente.mention}!",
-                inline=False
-            )
-        else:
+        if not cargo_adicionado:
             embed_confirma.add_field(
                 name="**⚠️ ATENÇÃO:**",
                 value="❌ Não foi possível adicionar o cargo ao cliente.",
                 inline=False
             )
-        
-        embed_confirma.add_field(
-            name="**🚀 PRÓXIMOS PASSOS:**",
-            value="A equipe já vai processar sua solicitação e liberar seu produto!\nAguarde as instruções finais. ⚡",
-            inline=False
-        )
         
         await interaction.channel.send(embed=embed_confirma)
         
