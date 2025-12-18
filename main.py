@@ -23,6 +23,7 @@ BUY_CATEGORY_ID = 1449312175448391833
 CLOSED_CATEGORY_ID = 1449319381422051400
 STAFF_ROLE_ID = 1449319423780458597
 LOG_CHANNEL_ID = 1449319519733551245
+CLIENT_ROLE_ID = 1449248434317164608  # ADICIONE AQUI O ID DO CARGO PARA CLIENTES
 
 # Taxas de Conversão
 ROBUX_RATE = 0.035  # 1 Robux = R$ 0,035
@@ -47,7 +48,7 @@ def calcular_robux_liquidos(valor_gamepass):
     return round(robux_liquidos)
 
 # ======================
-# MODAIS PARA COMPRAS
+# MODAIS PARA COMPRAS (MANTIDO)
 # ======================
 
 class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
@@ -574,6 +575,29 @@ class TicketButtons(discord.ui.View):
         if channel:
             await channel.send(embed=embed)
 
+    async def adicionar_cargo_cliente(self, interaction: discord.Interaction, cliente):
+        """Adiciona o cargo de cliente ao usuário."""
+        try:
+            # Obter o objeto do cargo
+            cliente_role = interaction.guild.get_role(CLIENT_ROLE_ID)
+            if not cliente_role:
+                print(f"❌ Cargo com ID {CLIENT_ROLE_ID} não encontrado!")
+                return False
+            
+            # Verificar se o cliente já tem o cargo
+            if cliente_role in cliente.roles:
+                print(f"✅ Cliente {cliente.name} já possui o cargo {cliente_role.name}")
+                return True
+            
+            # Adicionar o cargo
+            await cliente.add_roles(cliente_role)
+            print(f"✅ Cargo {cliente_role.name} adicionado para {cliente.name}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Erro ao adicionar cargo para {cliente.name}: {str(e)}")
+            return False
+
     @discord.ui.button(
         label="Confirmar Pagamento",
         style=discord.ButtonStyle.success,
@@ -608,7 +632,12 @@ class TicketButtons(discord.ui.View):
         save_json(PURCHASE_COUNT_FILE, compras)
 
         cliente = interaction.guild.get_member(int(uid))
+        
+        # Adicionar cargo ao cliente
+        cargo_adicionado = False
         if cliente:
+            cargo_adicionado = await self.adicionar_cargo_cliente(interaction, cliente)
+            
             try:
                 embed_dm = discord.Embed(
                     title="🎉 **PAGAMENTO CONFIRMADO!** 🎉",
@@ -640,6 +669,14 @@ class TicketButtons(discord.ui.View):
                     embed_dm.add_field(
                         name="**Tipo:** Gamepass 🎮",
                         value=f"**Jogo:** {jogo}\n**Gamepass:** {gamepass}",
+                        inline=False
+                    )
+                
+                # Adicionar informação sobre o cargo
+                if cargo_adicionado:
+                    embed_dm.add_field(
+                        name="**🏆 CARGO ADICIONADO!**",
+                        value=f"Você recebeu o cargo de **Cliente Verificado** no servidor!",
                         inline=False
                     )
                 
@@ -685,6 +722,12 @@ class TicketButtons(discord.ui.View):
             log.add_field(name="🎮 Jogo", value=f"`{jogo}`", inline=True)
             log.add_field(name="💎 Gamepass", value=f"`{gamepass}`", inline=True)
         
+        # Adicionar informação sobre o cargo no log
+        if cargo_adicionado:
+            log.add_field(name="🏆 Cargo", value="✅ **Adicionado**", inline=True)
+        else:
+            log.add_field(name="🏆 Cargo", value="❌ **Não adicionado**", inline=True)
+        
         log.add_field(name="🕒 Aberto em", value=datetime.fromisoformat(ticket["criado_em"]).strftime('%d/%m %H:%M'), inline=True)
         log.add_field(name="✅ Confirmado por", value=interaction.user.mention, inline=True)
         log.add_field(name="📊 Total de compras", value=f"`{compras.get(uid, 0)}` compras", inline=True)
@@ -724,6 +767,20 @@ class TicketButtons(discord.ui.View):
                 inline=False
             )
         
+        # Adicionar informação sobre o cargo
+        if cargo_adicionado:
+            embed_confirma.add_field(
+                name="**🏆 CARGO ATRIBUÍDO:**",
+                value=f"✅ O cargo de cliente foi adicionado para {cliente.mention}!",
+                inline=False
+            )
+        else:
+            embed_confirma.add_field(
+                name="**⚠️ ATENÇÃO:**",
+                value="❌ Não foi possível adicionar o cargo ao cliente.",
+                inline=False
+            )
+        
         embed_confirma.add_field(
             name="**🚀 PRÓXIMOS PASSOS:**",
             value="A equipe já vai processar sua solicitação e liberar seu produto!\nAguarde as instruções finais. ⚡",
@@ -731,8 +788,13 @@ class TicketButtons(discord.ui.View):
         )
         
         await interaction.channel.send(embed=embed_confirma)
+        
+        mensagem_confirmacao = "✅ **Pagamento confirmado!** O cliente foi notificado e o log foi registrado."
+        if cargo_adicionado:
+            mensagem_confirmacao += " O cargo foi adicionado com sucesso! 🏆"
+        
         await interaction.response.send_message(
-            "✅ **Pagamento confirmado!** O cliente foi notificado e o log foi registrado.",
+            mensagem_confirmacao,
             ephemeral=True
         )
 
@@ -1443,4 +1505,4 @@ if __name__ == "__main__":
     print("🚀 Iniciando bot...")
     print("🔧 Carregando configurações...")
     print("💾 Verificando arquivos JSON...")
-    bot.run(TOKEN) 
+    bot.run(TOKEN)
