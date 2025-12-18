@@ -47,7 +47,314 @@ def calcular_robux_liquidos(valor_gamepass):
     return round(robux_liquidos)
 
 # ======================
-# CLASSES DE UI
+# MODAIS PARA COMPRAS
+# ======================
+
+class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
+    quantidade = discord.ui.TextInput(
+        label="🎯 Quantos Robux você quer comprar?",
+        placeholder="Digite apenas números (ex: 1000, 5000, 10000)",
+        required=True,
+        max_length=10
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            quantidade = int(self.quantidade.value)
+            
+            if quantidade <= 0:
+                await interaction.response.send_message(
+                    "🤔 **Oops!** Você precisa digitar um número maior que zero!",
+                    ephemeral=True
+                )
+                return
+            
+            # Armazenar a quantidade no modal para uso posterior
+            self.quantidade_robux = quantidade
+            
+            # Criar o ticket
+            await self.criar_ticket(interaction, "robux", quantidade)
+            
+        except ValueError:
+            await interaction.response.send_message(
+                "❌ **Formato inválido!**\nPor favor, digite apenas números (ex: 1000, 5000, 10000)",
+                ephemeral=True
+            )
+    
+    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, quantidade: int):
+        """Cria um ticket para compra de Robux."""
+        data = load_json(TICKETS_FILE, {"usuarios": {}})
+        uid = str(interaction.user.id)
+
+        if uid in data["usuarios"] and data["usuarios"][uid].get("ticket_aberto"):
+            await interaction.response.send_message(
+                "🔄 **Você já tem um ticket aberto!**\n"
+                "Por favor, use o ticket atual antes de abrir um novo. "
+                "Nossa equipe está pronta para te atender lá! 🚀",
+                ephemeral=True
+            )
+            return
+
+        guild = interaction.guild
+        user = interaction.user
+        category = guild.get_channel(BUY_CATEGORY_ID)
+
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+            guild.get_role(STAFF_ROLE_ID): discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+            guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+        }
+
+        tipo_compra = "Robux"
+        emoji_tipo = "💎"
+        
+        channel = await guild.create_text_channel(
+            name=f"{emoji_tipo}┃{user.name}-{tipo_compra}-{random.randint(100,999)}",
+            category=category,
+            overwrites=overwrites,
+            topic=f"🎫 Ticket de {tipo_compra} • Cliente: {user.name} • Quantidade: {quantidade:,} Robux • Aberto em: {datetime.now().strftime('%d/%m %H:%M')}"
+        )
+
+        data["usuarios"].setdefault(uid, {"tickets": [], "ticket_aberto": False})
+        data["usuarios"][uid]["tickets"].append({
+            "canal_id": channel.id,
+            "tipo": tipo,
+            "status": "aberto",
+            "criado_em": datetime.utcnow().isoformat(),
+            "cliente_nome": user.name,
+            "quantidade": quantidade
+        })
+        data["usuarios"][uid]["ticket_aberto"] = True
+        save_json(TICKETS_FILE, data)
+
+        embed_ticket = discord.Embed(
+            title=f"🎫 **TICKET DE {tipo_compra.upper()} ABERTO!**",
+            description=f"""
+            ✨ **Olá {user.mention}!** Seja muito bem-vindo(a) ao seu ticket! ✨
+            
+            **📋 INFORMAÇÕES DO SEU ATENDIMENTO:**
+            • **Tipo:** {tipo_compra} {emoji_tipo}
+            • **Quantidade:** {quantidade:,} Robux
+            • **Ticket:** #{channel.name}
+            • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+            • **Status:** 🔵 **EM ANDAMENTO**
+            
+            **🎯 PRÓXIMOS PASSOS:**
+            1. **Aguarde nossa equipe** - Vamos te atender rapidinho! ⚡
+            2. **Siga as instruções** - Vamos guiar você passo a passo!
+            3. **Realize o pagamento** - Envie o comprovante quando solicitado
+            """,
+            color=discord.Color.green(),
+            timestamp=datetime.utcnow()
+        )
+        
+        # Adicionar valor em reais calculado
+        valor_reais = quantidade * ROBUX_RATE
+        embed_ticket.add_field(
+            name="💰 **VALOR ESTIMADO**",
+            value=f"```💵 R$ {valor_reais:,.2f}```",
+            inline=True
+        )
+        
+        embed_ticket.add_field(
+            name="📞 **ATENDIMENTO RÁPIDO**",
+            value="Nossa equipe foi notificada e já vai te atender! ⚡",
+            inline=True
+        )
+        
+        embed_ticket.set_footer(
+            text=f"Atendimento VIP para {user.name} • Obrigado por escolher nossa loja!",
+            icon_url=user.avatar.url if user.avatar else None
+        )
+        embed_ticket.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
+
+        await channel.send(
+            content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>\n\n**📋 DETALHES DA COMPRA:**\n• **Tipo:** {tipo_compra}\n• **Quantidade:** {quantidade:,} Robux",
+            embed=embed_ticket,
+            view=TicketButtons()
+        )
+
+        embed_confirma = discord.Embed(
+            title="✅ **TICKET CRIADO COM SUCESSO!**",
+            description=f"""
+            🎉 **Perfeito! Seu ticket foi criado e já está pronto!**
+            
+            **📋 DETALHES:**
+            • **Ticket:** {channel.mention}
+            • **Tipo:** {tipo_compra} {emoji_tipo}
+            • **Quantidade:** {quantidade:,} Robux
+            • **Valor estimado:** R$ {valor_reais:,.2f}
+            • **Aberto em:** {datetime.now().strftime('%H:%M')}
+            
+            **🚀 VÁ ATÉ O TICKET:**
+            Clique no link acima ou vá até o canal {channel.mention} para continuar!
+            
+            **⏳ AGUARDE...**
+            Nossa equipe foi notificada e já vai te atender!
+            """,
+            color=discord.Color.green()
+        )
+        
+        await interaction.response.send_message(embed=embed_confirma, ephemeral=True)
+
+
+class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
+    jogo = discord.ui.TextInput(
+        label="🎯 Nome do Jogo",
+        placeholder="Ex: Adopt Me, Blox Fruits, Brookhaven",
+        required=True,
+        max_length=100
+    )
+    
+    gamepass = discord.ui.TextInput(
+        label="💎 Nome da Gamepass",
+        placeholder="Ex: 1.000 Robux, VIP Pass, Super Booster",
+        required=True,
+        max_length=100
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        jogo = self.jogo.value.strip()
+        gamepass = self.gamepass.value.strip()
+        
+        if not jogo or not gamepass:
+            await interaction.response.send_message(
+                "🤔 **Oops!** Preencha todos os campos corretamente!",
+                ephemeral=True
+            )
+            return
+        
+        # Armazenar os valores para uso posterior
+        self.jogo_info = jogo
+        self.gamepass_info = gamepass
+        
+        # Criar o ticket
+        await self.criar_ticket(interaction, "gamepass", jogo, gamepass)
+    
+    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, jogo: str, gamepass: str):
+        """Cria um ticket para compra de Gamepass."""
+        data = load_json(TICKETS_FILE, {"usuarios": {}})
+        uid = str(interaction.user.id)
+
+        if uid in data["usuarios"] and data["usuarios"][uid].get("ticket_aberto"):
+            await interaction.response.send_message(
+                "🔄 **Você já tem um ticket aberto!**\n"
+                "Por favor, use o ticket atual antes de abrir um novo. "
+                "Nossa equipe está pronta para te atender lá! 🚀",
+                ephemeral=True
+            )
+            return
+
+        guild = interaction.guild
+        user = interaction.user
+        category = guild.get_channel(BUY_CATEGORY_ID)
+
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+            guild.get_role(STAFF_ROLE_ID): discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+            guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
+        }
+
+        tipo_compra = "Gamepass"
+        emoji_tipo = "🎮"
+        
+        channel = await guild.create_text_channel(
+            name=f"{emoji_tipo}┃{user.name}-{tipo_compra}-{random.randint(100,999)}",
+            category=category,
+            overwrites=overwrites,
+            topic=f"🎫 Ticket de {tipo_compra} • Cliente: {user.name} • Jogo: {jogo} • Gamepass: {gamepass} • Aberto em: {datetime.now().strftime('%d/%m %H:%M')}"
+        )
+
+        data["usuarios"].setdefault(uid, {"tickets": [], "ticket_aberto": False})
+        data["usuarios"][uid]["tickets"].append({
+            "canal_id": channel.id,
+            "tipo": tipo,
+            "status": "aberto",
+            "criado_em": datetime.utcnow().isoformat(),
+            "cliente_nome": user.name,
+            "jogo": jogo,
+            "gamepass": gamepass
+        })
+        data["usuarios"][uid]["ticket_aberto"] = True
+        save_json(TICKETS_FILE, data)
+
+        embed_ticket = discord.Embed(
+            title=f"🎫 **TICKET DE {tipo_compra.upper()} ABERTO!**",
+            description=f"""
+            ✨ **Olá {user.mention}!** Seja muito bem-vindo(a) ao seu ticket! ✨
+            
+            **📋 INFORMAÇÕES DO SEU ATENDIMENTO:**
+            • **Tipo:** {tipo_compra} {emoji_tipo}
+            • **Jogo:** {jogo}
+            • **Gamepass:** {gamepass}
+            • **Ticket:** #{channel.name}
+            • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+            • **Status:** 🔵 **EM ANDAMENTO**
+            
+            **🎯 PRÓXIMOS PASSOS:**
+            1. **Informe o preço da gamepass** - Quanto custa no Roblox?
+            2. **Aguarde nossa equipe** - Vamos te atender rapidinho! ⚡
+            3. **Siga as instruções** - Vamos guiar você passo a passo!
+            4. **Realize o pagamento** - Envie o comprovante quando solicitado
+            """,
+            color=discord.Color.blue(),
+            timestamp=datetime.utcnow()
+        )
+        
+        embed_ticket.add_field(
+            name="📞 **ATENDIMENTO RÁPIDO**",
+            value="Nossa equipe foi notificada e já vai te atender! ⚡",
+            inline=True
+        )
+        
+        embed_ticket.add_field(
+            name="💡 **DICA IMPORTANTE**",
+            value="Use `/calculadora` para calcular o valor exato da gamepass!",
+            inline=True
+        )
+        
+        embed_ticket.set_footer(
+            text=f"Atendimento VIP para {user.name} • Obrigado por escolher nossa loja!",
+            icon_url=user.avatar.url if user.avatar else None
+        )
+        embed_ticket.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
+
+        await channel.send(
+            content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>\n\n**📋 DETALHES DA COMPRA:**\n• **Tipo:** {tipo_compra}\n• **Jogo:** {jogo}\n• **Gamepass:** {gamepass}",
+            embed=embed_ticket,
+            view=TicketButtons()
+        )
+
+        embed_confirma = discord.Embed(
+            title="✅ **TICKET CRIADO COM SUCESSO!**",
+            description=f"""
+            🎉 **Perfeito! Seu ticket foi criado e já está pronto!**
+            
+            **📋 DETALHES:**
+            • **Ticket:** {channel.mention}
+            • **Tipo:** {tipo_compra} {emoji_tipo}
+            • **Jogo:** {jogo}
+            • **Gamepass:** {gamepass}
+            • **Aberto em:** {datetime.now().strftime('%H:%M')}
+            
+            **🚀 VÁ ATÉ O TICKET:**
+            Clique no link acima ou vá até o canal {channel.mention} para continuar!
+            
+            **⏳ AGUARDE...**
+            Nossa equipe foi notificada e já vai te atender!
+            
+            **💡 LEMBRETE:**
+            Não se esqueça de informar o preço da gamepass no ticket!
+            """,
+            color=discord.Color.blue()
+        )
+        
+        await interaction.response.send_message(embed=embed_confirma, ephemeral=True)
+
+# ======================
+# CLASSES DE UI (ATUALIZADAS)
 # ======================
 
 class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais"):
@@ -224,150 +531,27 @@ class CalculatorView(discord.ui.View):
         await interaction.response.send_modal(ReaisToRobuxModal())
 
 
-class PurchaseSelect(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(
-                label="Robux",
-                value="robux",
-                emoji="💎",
-                description="Compre Robux com um menor preço!"
-            ),
-            discord.SelectOption(
-                label="Gamepass",
-                value="gamepass",
-                emoji="🎮",
-                description="Compre Gamepasses de qualquer jogo por mais barato!"
-            )
-        ]
-        super().__init__(
-            placeholder="🎯 O que você deseja comprar hoje?",
-            options=options,
-            min_values=1,
-            max_values=1
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        data = load_json(TICKETS_FILE, {"usuarios": {}})
-        uid = str(interaction.user.id)
-
-        if uid in data["usuarios"] and data["usuarios"][uid].get("ticket_aberto"):
-            await interaction.response.send_message(
-                "🔄 **Você já tem um ticket aberto!**\n"
-                "Por favor, use o ticket atual antes de abrir um novo. "
-                "Nossa equipe está pronta para te atender lá! 🚀",
-                ephemeral=True
-            )
-            return
-
-        guild = interaction.guild
-        user = interaction.user
-        category = guild.get_channel(BUY_CATEGORY_ID)
-
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
-            guild.get_role(STAFF_ROLE_ID): discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
-            guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
-        }
-
-        tipo_compra = "Robux" if self.values[0] == "robux" else "Gamepass"
-        emoji_tipo = "💎" if self.values[0] == "robux" else "🎮"
-        
-        channel = await guild.create_text_channel(
-            name=f"{emoji_tipo}┃{user.name}-{tipo_compra}-{random.randint(100,999)}",
-            category=category,
-            overwrites=overwrites,
-            topic=f"🎫 Ticket de {tipo_compra} • Cliente: {user.name} • Aberto em: {datetime.now().strftime('%d/%m %H:%M')}"
-        )
-
-        data["usuarios"].setdefault(uid, {"tickets": [], "ticket_aberto": False})
-        data["usuarios"][uid]["tickets"].append({
-            "canal_id": channel.id,
-            "tipo": self.values[0],
-            "status": "aberto",
-            "criado_em": datetime.utcnow().isoformat(),
-            "cliente_nome": user.name
-        })
-        data["usuarios"][uid]["ticket_aberto"] = True
-        save_json(TICKETS_FILE, data)
-
-        embed_ticket = discord.Embed(
-            title=f"🎫 **TICKET DE {tipo_compra.upper()} ABERTO!**",
-            description=f"""
-            ✨ **Olá {user.mention}!** Seja muito bem-vindo(a) ao seu ticket! ✨
-            
-            **📋 INFORMAÇÕES DO SEU ATENDIMENTO:**
-            • **Tipo:** {tipo_compra} {emoji_tipo}
-            • **Ticket:** #{channel.name}
-            • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
-            • **Status:** 🔵 **EM ANDAMENTO**
-            
-            **🎯 PRÓXIMOS PASSOS:**
-            1. **Descreva sua compra** - Quanto você quer comprar / Quanto custa a gamepass?
-            2. **Aguarde nossa equipe** - Vamos te atender rapidinho! ⚡
-            3. **Siga as instruções** - Vamos guiar você passo a passo!
-            """,
-            color=discord.Color.green(),
-            timestamp=datetime.utcnow()
-        )
-        
-        embed_ticket.add_field(
-            name="📞 **ATENDIMENTO RÁPIDO**",
-            value="Nossa equipe foi notificada e já vai te atender! ⚡",
-            inline=True
-        )
-        embed_ticket.add_field(
-            name="**💡 DICA IMPORTANTE:**",
-            value="Use nossa calculadora em <#1448903135333449828> para calcular o valor exato da gamepass!",
-            inline=True
-        )
-        embed_ticket.add_field(
-            name="🔧 **BOTÕES DISPONÍVEIS**",
-            value="Use os botões abaixo para gerenciar seu ticket!",
-            inline=True
-        )
-        embed_ticket.set_footer(
-            text=f"Atendimento VIP para {user.name} • Obrigado por escolher nossa loja!",
-            icon_url=user.avatar.url if user.avatar else None
-        )
-        embed_ticket.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
-
-        await channel.send(
-            content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>",
-            embed=embed_ticket,
-            view=TicketButtons()
-        )
-
-        embed_confirma = discord.Embed(
-            title="✅ **TICKET CRIADO COM SUCESSO!**",
-            description=f"""
-            🎉 **Perfeito! Seu ticket foi criado e já está pronto!**
-            
-            **📋 DETALHES:**
-            • **Ticket:** {channel.mention}
-            • **Tipo:** {tipo_compra} {emoji_tipo}
-            • **Aberto em:** {datetime.now().strftime('%H:%M')}
-            
-            **🚀 VÁ ATÉ O TICKET:**
-            Clique no link acima ou vá até o canal {channel.mention} para continuar!
-            
-            **⏳ AGUARDE...**
-            Nossa equipe foi notificada e já vai te atender! Enquanto isso, você pode:
-            • Descrever o que precisa no ticket
-            • Usar nossa calculadora para conferir valores
-            • Tirar dúvidas com nossa equipe
-            """,
-            color=discord.Color.green()
-        )
-        
-        await interaction.response.send_message(embed=embed_confirma, ephemeral=True)
-
-
 class PurchaseView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.add_item(PurchaseSelect())
+
+    @discord.ui.button(
+        label="Comprar Robux",
+        style=discord.ButtonStyle.success,
+        emoji="💎",
+        row=0
+    )
+    async def comprar_robux(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(RobuxPurchaseModal())
+
+    @discord.ui.button(
+        label="Comprar Gamepass",
+        style=discord.ButtonStyle.primary,
+        emoji="🎮",
+        row=0
+    )
+    async def comprar_gamepass(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(GamepassPurchaseModal())
 
 
 class TicketButtons(discord.ui.View):
@@ -436,18 +620,46 @@ class TicketButtons(discord.ui.View):
                     • **Confirmado por:** {interaction.user.mention}
                     • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
                     • **Ticket:** #{interaction.channel.id}
-
-                    **🙏 AGRADECIMENTO:**
-                    Muito obrigado por comprar conosco! Sua satisfação é nossa prioridade! ✨
                     
-                    **🎁 PRÓXIMOS PASSOS:**
+                    **📦 DETALHES DA COMPRA:**
+                    """,
+                    color=discord.Color.green()
+                )
+                
+                # Adicionar informações específicas da compra
+                if ticket["tipo"] == "robux":
+                    quantidade = ticket.get("quantidade", "N/A")
+                    embed_dm.add_field(
+                        name="**Tipo:** Robux 💎",
+                        value=f"**Quantidade:** {quantidade:,} Robux",
+                        inline=False
+                    )
+                else:
+                    jogo = ticket.get("jogo", "N/A")
+                    gamepass = ticket.get("gamepass", "N/A")
+                    embed_dm.add_field(
+                        name="**Tipo:** Gamepass 🎮",
+                        value=f"**Jogo:** {jogo}\n**Gamepass:** {gamepass}",
+                        inline=False
+                    )
+                
+                embed_dm.add_field(
+                    name="**🙏 AGRADECIMENTO:**",
+                    value="Muito obrigado por comprar conosco! Sua satisfação é nossa prioridade! ✨",
+                    inline=False
+                )
+                
+                embed_dm.add_field(
+                    name="**🎁 PRÓXIMOS PASSOS:**",
+                    value="""
                     1. **Aguarde** a equipe comprar sua gamepass
                     2. **Receba seus Robux** em 5-7 dias após compra! 
                     2.5. **Sua Gamepass** cai na hora! 
                     3. **Verifique seus Robux** em `https://www.roblox.com/transactions` ⭐
                     """,
-                    color=discord.Color.green()
+                    inline=False
                 )
+                
                 embed_dm.set_footer(text="⭐ Volte sempre!")
                 await cliente.send(embed=embed_dm)
             except:
@@ -462,6 +674,17 @@ class TicketButtons(discord.ui.View):
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Cliente", value=cliente.mention if cliente else f"`{uid}`", inline=True)
         log.add_field(name="💰 Tipo", value=ticket["tipo"].capitalize(), inline=True)
+        
+        # Adicionar informações específicas da compra no log
+        if ticket["tipo"] == "robux":
+            quantidade = ticket.get("quantidade", "N/A")
+            log.add_field(name="📦 Quantidade", value=f"`{quantidade:,} Robux`", inline=True)
+        else:
+            jogo = ticket.get("jogo", "N/A")
+            gamepass = ticket.get("gamepass", "N/A")
+            log.add_field(name="🎮 Jogo", value=f"`{jogo}`", inline=True)
+            log.add_field(name="💎 Gamepass", value=f"`{gamepass}`", inline=True)
+        
         log.add_field(name="🕒 Aberto em", value=datetime.fromisoformat(ticket["criado_em"]).strftime('%d/%m %H:%M'), inline=True)
         log.add_field(name="✅ Confirmado por", value=interaction.user.mention, inline=True)
         log.add_field(name="📊 Total de compras", value=f"`{compras.get(uid, 0)}` compras", inline=True)
@@ -479,11 +702,32 @@ class TicketButtons(discord.ui.View):
             • **Em:** {datetime.now().strftime('%d/%m às %H:%M')}
             • **Cliente:** {cliente.mention if cliente else 'Usuário não encontrado'}
             
-            **🚀 PRÓXIMOS PASSOS:**
-            A equipe já vai processar sua solicitação e liberar seu produto!
-            Aguarde as instruções finais. ⚡
+            **📦 DETALHES DA COMPRA:**
             """,
             color=discord.Color.green()
+        )
+        
+        # Adicionar informações específicas da compra
+        if ticket["tipo"] == "robux":
+            quantidade = ticket.get("quantidade", "N/A")
+            embed_confirma.add_field(
+                name="**Tipo:** Robux 💎",
+                value=f"**Quantidade:** {quantidade:,} Robux",
+                inline=False
+            )
+        else:
+            jogo = ticket.get("jogo", "N/A")
+            gamepass = ticket.get("gamepass", "N/A")
+            embed_confirma.add_field(
+                name="**Tipo:** Gamepass 🎮",
+                value=f"**Jogo:** {jogo}\n**Gamepass:** {gamepass}",
+                inline=False
+            )
+        
+        embed_confirma.add_field(
+            name="**🚀 PRÓXIMOS PASSOS:**",
+            value="A equipe já vai processar sua solicitação e liberar seu produto!\nAguarde as instruções finais. ⚡",
+            inline=False
         )
         
         await interaction.channel.send(embed=embed_confirma)
@@ -525,6 +769,18 @@ class TicketButtons(discord.ui.View):
         )
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Staff", value=interaction.user.mention, inline=True)
+        
+        # Adicionar informações específicas da compra no log
+        if ticket["tipo"] == "robux":
+            quantidade = ticket.get("quantidade", "N/A")
+            log.add_field(name="💰 Tipo", value=f"Robux ({quantidade:,})", inline=True)
+        else:
+            jogo = ticket.get("jogo", "N/A")
+            gamepass = ticket.get("gamepass", "N/A")
+            log.add_field(name="💰 Tipo", value=f"Gamepass", inline=True)
+            log.add_field(name="🎮 Jogo", value=f"`{jogo}`", inline=True)
+            log.add_field(name="💎 Gamepass", value=f"`{gamepass}`", inline=True)
+        
         log.add_field(name="📌 Status", value="🟡 **PENDENTE**", inline=True)
         await self.send_log(interaction.guild, log)
 
@@ -570,6 +826,18 @@ class TicketButtons(discord.ui.View):
         )
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Cliente", value=interaction.user.mention, inline=True)
+        
+        # Adicionar informações específicas da compra no log
+        if ticket["tipo"] == "robux":
+            quantidade = ticket.get("quantidade", "N/A")
+            log.add_field(name="💰 Tipo", value=f"Robux ({quantidade:,})", inline=True)
+        else:
+            jogo = ticket.get("jogo", "N/A")
+            gamepass = ticket.get("gamepass", "N/A")
+            log.add_field(name="💰 Tipo", value=f"Gamepass", inline=True)
+            log.add_field(name="🎮 Jogo", value=f"`{jogo}`", inline=True)
+            log.add_field(name="💎 Gamepass", value=f"`{gamepass}`", inline=True)
+        
         log.add_field(name="📌 Status", value="🔴 **CANCELADO**", inline=True)
         await self.send_log(interaction.guild, log)
 
@@ -583,15 +851,42 @@ class TicketButtons(discord.ui.View):
             • **Horário:** {datetime.now().strftime('%d/%m às %H:%M')}
             • **Motivo:** Solicitado pelo cliente
             
-            **ℹ️ INFORMAÇÕES:**
+            **📦 DETALHES DA COMPRA:**
+            """,
+            color=discord.Color.red()
+        )
+        
+        # Adicionar informações específicas da compra
+        if ticket["tipo"] == "robux":
+            quantidade = ticket.get("quantidade", "N/A")
+            embed_cancelado.add_field(
+                name="**Tipo:** Robux 💎",
+                value=f"**Quantidade:** {quantidade:,} Robux",
+                inline=False
+            )
+        else:
+            jogo = ticket.get("jogo", "N/A")
+            gamepass = ticket.get("gamepass", "N/A")
+            embed_cancelado.add_field(
+                name="**Tipo:** Gamepass 🎮",
+                value=f"**Jogo:** {jogo}\n**Gamepass:** {gamepass}",
+                inline=False
+            )
+        
+        embed_cancelado.add_field(
+            name="**ℹ️ INFORMAÇÕES:**",
+            value="""
             • Ticket será arquivado automaticamente
             • Para nova compra, abra um novo ticket
             • Dúvidas? Entre em contato com nossa equipe
-            
-            **🙏 AGRADECIMENTO:**
-            Esperamos vê-lo novamente em uma próxima compra! ✨
             """,
-            color=discord.Color.red()
+            inline=False
+        )
+        
+        embed_cancelado.add_field(
+            name="**🙏 AGRADECIMENTO:**",
+            value="Esperamos vê-lo novamente em uma próxima compra! ✨",
+            inline=False
         )
         
         await interaction.channel.send(embed=embed_cancelado)
@@ -639,9 +934,20 @@ class TicketButtons(discord.ui.View):
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Staff", value=interaction.user.mention, inline=True)
         log.add_field(name="👤 Cliente", value=f"<@{uid}>", inline=True)
+        
+        # Adicionar informações específicas da compra no log
+        if ticket["tipo"] == "robux":
+            quantidade = ticket.get("quantidade", "N/A")
+            log.add_field(name="💰 Tipo", value=f"Robux ({quantidade:,})", inline=True)
+        else:
+            jogo = ticket.get("jogo", "N/A")
+            gamepass = ticket.get("gamepass", "N/A")
+            log.add_field(name="💰 Tipo", value=f"Gamepass", inline=True)
+            log.add_field(name="🎮 Jogo", value=f"`{jogo}`", inline=True)
+            log.add_field(name="💎 Gamepass", value=f"`{gamepass}`", inline=True)
+        
         log.add_field(name="📌 Status", value="🔵 **FECHADO**", inline=True)
         log.add_field(name="⏰ Duração", value=f"`{(datetime.utcnow() - datetime.fromisoformat(ticket['criado_em'])).seconds//60} minutos`", inline=True)
-        log.add_field(name="💰 Tipo", value=ticket["tipo"].capitalize(), inline=True)
         await self.send_log(interaction.guild, log)
 
         embed_fechado = discord.Embed(
@@ -654,16 +960,42 @@ class TicketButtons(discord.ui.View):
             • **Horário:** {datetime.now().strftime('%d/%m às %H:%M')}
             • **Status:** 🟢 **CONCLUÍDO**
             
-            **🎯 ATENDIMENTO FINALIZADO:**
+            **📦 DETALHES DA COMPRA:**
+            """,
+            color=discord.Color.blurple()
+        )
+        
+        # Adicionar informações específicas da compra
+        if ticket["tipo"] == "robux":
+            quantidade = ticket.get("quantidade", "N/A")
+            embed_fechado.add_field(
+                name="**Tipo:** Robux 💎",
+                value=f"**Quantidade:** {quantidade:,} Robux",
+                inline=False
+            )
+        else:
+            jogo = ticket.get("jogo", "N/A")
+            gamepass = ticket.get("gamepass", "N/A")
+            embed_fechado.add_field(
+                name="**Tipo:** Gamepass 🎮",
+                value=f"**Jogo:** {jogo}\n**Gamepass:** {gamepass}",
+                inline=False
+            )
+        
+        embed_fechado.add_field(
+            name="**🎯 ATENDIMENTO FINALIZADO:**",
+            value="""
             • Todas as etapas foram concluídas
             • Ticket será arquivado automaticamente
             • Histórico preservado para consulta
-            
-            **⭐ AVALIAÇÃO:**
-            Esperamos que tenha tido uma ótima experiência!
-            Volte sempre para novas compras! ✨
             """,
-            color=discord.Color.blurple()
+            inline=False
+        )
+        
+        embed_fechado.add_field(
+            name="**⭐ AVALIAÇÃO:**",
+            value="Esperamos que tenha tido uma ótima experiência!\nVolte sempre para novas compras! ✨",
+            inline=False
         )
         
         await interaction.channel.send(embed=embed_fechado)
@@ -675,7 +1007,7 @@ class TicketButtons(discord.ui.View):
 
 
 # ======================
-# FUNÇÕES UTILITÁRIAS
+# FUNÇÕES UTILITÁRIAS (MANTIDAS)
 # ======================
 
 def load_json(path, default):
@@ -716,7 +1048,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 # ======================
-# COMANDOS HÍBRIDOS (PREFIXO E SLASH)
+# COMANDOS HÍBRIDOS (PREFIXO E SLASH) - MANTIDOS
 # ======================
 
 @bot.hybrid_command(name="calcular", description="Calcula o valor da gamepass necessário para obter X robux líquidos")
@@ -900,7 +1232,7 @@ async def compras(ctx, usuario: discord.Member = None):
 
 
 # ======================
-# COMANDOS SLASH ESPECÍFICOS
+# COMANDOS SLASH ESPECÍFICOS (ATUALIZADOS)
 # ======================
 
 @bot.tree.command(name="calculadora", description="Abre a calculadora interativa de Robux/Reais")
@@ -939,10 +1271,19 @@ async def comprar(interaction: discord.Interaction):
         ✨ **SEJA BEM-VINDO À NOSSA LOJA!** ✨
         
         **🚀 COMO FUNCIONA?**
-        1. Selecione abaixo o que quer comprar
-        2. Abra um ticket de atendimento
-        3. Nossa equipe te atende rapidinho!
-        4. Receba seu produto em minutos! ⏰
+        1. Escolha abaixo o que quer comprar
+        2. Preencha as informações solicitadas
+        3. Abra um ticket de atendimento
+        4. Nossa equipe te atende rapidinho!
+        5. Receba seu produto em minutos! ⏰
+        
+        **💎 ROBUX:**
+        • Compre Robux com desconto
+        • Receba diretamente na sua conta
+        
+        **🎮 GAMEPASS:**
+        • Compre gamepasses de qualquer jogo
+        • Pagamento facilitado
         """,
         color=discord.Color.blurple()
     )
@@ -954,7 +1295,7 @@ async def comprar(interaction: discord.Interaction):
 
 
 # ======================
-# COMANDOS ADMINISTRATIVOS
+# COMANDOS ADMINISTRATIVOS (MANTIDOS)
 # ======================
 
 @bot.hybrid_command(name="painelcompras", description="Envia o painel de compras em um canal específico")
@@ -971,10 +1312,19 @@ async def painelcompras(ctx, canal: discord.TextChannel = None):
         ✨ **SEJA BEM-VINDO À NOSSA LOJA!** ✨
         
         **🚀 COMO FUNCIONA?**
-        1. Selecione abaixo o que quer comprar
-        2. Abra um ticket de atendimento
-        3. Nossa equipe te atende rapidinho!
-        4. Receba seu produto em minutos! ⏰
+        1. Escolha abaixo o que quer comprar
+        2. Preencha as informações solicitadas
+        3. Abra um ticket de atendimento
+        4. Nossa equipe te atende rapidinho!
+        5. Receba seu produto em minutos! ⏰
+        
+        **💎 ROBUX:**
+        • Compre Robux com desconto
+        • Receba diretamente na sua conta
+        
+        **🎮 GAMEPASS:**
+        • Compre gamepasses de qualquer jogo
+        • Pagamento facilitado
         """,
         color=discord.Color.blurple()
     )
@@ -1075,7 +1425,7 @@ async def sync(ctx):
 
 
 # ======================
-# EVENTOS DO BOT
+# EVENTOS DO BOT (MANTIDOS)
 # ======================
 
 @bot.event
