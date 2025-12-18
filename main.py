@@ -1276,14 +1276,6 @@ async def comprar(interaction: discord.Interaction):
         3. Abra um ticket de atendimento
         4. Nossa equipe te atende rapidinho!
         5. Receba seu produto em minutos! ⏰
-        
-        **💎 ROBUX:**
-        • Compre Robux com desconto
-        • Receba diretamente na sua conta
-        
-        **🎮 GAMEPASS:**
-        • Compre gamepasses de qualquer jogo
-        • Pagamento facilitado
         """,
         color=discord.Color.blurple()
     )
