@@ -1146,7 +1146,7 @@ async def calcular(ctx, valor: str):
             percentual_taxa = (taxa_roblox / valor_gamepass) * 100
             
             embed = discord.Embed(
-                title="# CALCULADORA DE ROBUX",
+                title="CALCULADORA DE ROBUX",
                 description=f"✨ **Cálculo para {robux_liquidos:,} Robux** ✨",
                 color=0x00ff00,
                 timestamp=datetime.utcnow()
