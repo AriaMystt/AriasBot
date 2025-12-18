@@ -1451,4 +1451,4 @@ if __name__ == "__main__":
     print("🚀 Iniciando bot...")
     print("🔧 Carregando configurações...")
     print("💾 Verificando arquivos JSON...")
-    bot.run(TOKEN)
+    bot.run(TOKEN) 
