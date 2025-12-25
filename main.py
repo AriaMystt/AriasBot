@@ -1348,8 +1348,9 @@ async def compras(ctx, usuario: discord.Member = None):
             membro = ctx.guild.get_member(int(uid))
             nome = membro.mention if membro else f"`Usuário {uid[:8]}...`"
             
+            tier_info = get_tier_by_purchases(total)
             medalha = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"**{i}.**"
-            top_clientes.append(f"{medalha} {nome} → **{total}** compras")
+            top_clientes.append(f"{medalha} {nome} → **{total}** compras (**{tier_info['name']}**)")
         
         embed.add_field(
             name="🏆 **TOP 10 CLIENTES**",
