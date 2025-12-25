@@ -5,6 +5,7 @@ import random
 from datetime import datetime
 import json
 import os
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,12 +36,13 @@ PURCHASE_COUNT_FILE = "compras.json"
 
 # Sistema de Tiers
 TIERS = [
-    {"name": "Base", "min_purchases": 0, "discount": 0.0},
-    {"name": "Bronze", "min_purchases": 3, "discount": 0.02},
-    {"name": "Ouro", "min_purchases": 6, "discount": 0.04},
-    {"name": "Diamante", "min_purchases": 9, "discount": 0.06},
-    {"name": "Platina", "min_purchases": 12, "discount": 0.08},
-    {"name": "Elite", "min_purchases": 15, "discount": 0.10},
+    {"name": "Base", "min_spent": 0.0, "discount": 0.0},
+    {"name": "Bronze", "min_spent": 10.0, "discount": 0.01},
+    {"name": "Prata", "min_spent": 35.0, "discount": 0.02},
+    {"name": "Ouro", "min_spent": 70.0, "discount": 0.04},
+    {"name": "Platina", "min_spent": 120.0, "discount": 0.06},
+    {"name": "Diamante", "min_spent": 180.0, "discount": 0.08},
+    {"name": "Elite", "min_spent": 250.0, "discount": 0.10},
 ]
 
 # ======================
@@ -58,22 +60,22 @@ def calcular_robux_liquidos(valor_gamepass):
     return round(robux_liquidos)
 
 def get_user_tier(user_id):
-    """Retorna o tier do usuário e o desconto baseado no histórico de compras."""
+    """Retorna o tier do usuário e o desconto baseado no total gasto."""
     data = load_json(PURCHASE_COUNT_FILE, {})
-    purchases = data.get(str(user_id), 0)
+    spent = data.get(str(user_id), {}).get("total", 0.0)
     
-    # Encontra o tier apropriado baseado no número de compras
+    # Encontra o tier apropriado baseado no total gasto
     for tier in reversed(TIERS):  # Começa do maior para o menor
-        if purchases >= tier["min_purchases"]:
+        if spent >= tier["min_spent"]:
             return tier["name"], tier["discount"]
     
     # Fallback para o primeiro tier
     return TIERS[0]["name"], TIERS[0]["discount"]
 
-def get_tier_by_purchases(purchases):
-    """Retorna o tier baseado no número de compras."""
+def get_tier_by_spent(spent):
+    """Retorna o tier baseado no total gasto."""
     for tier in reversed(TIERS):  # Começa do maior para o menor
-        if purchases >= tier["min_purchases"]:
+        if spent >= tier["min_spent"]:
             return tier
     return TIERS[0]
 
@@ -569,6 +571,157 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
             )
 
 
+class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pago"):
+    valor_pago = discord.ui.TextInput(
+        label="💵 Valor pago pelo cliente (em Reais)",
+        placeholder="Ex: 35.00, 50, 100.50",
+        required=True,
+        max_length=10
+    )
+
+    def __init__(self, uid, ticket, data, interaction, button, view):
+        super().__init__()
+        self.uid = uid
+        self.ticket = ticket
+        self.data = data
+        self.original_interaction = interaction
+        self.button = button
+        self.view = view
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            valor_pago = float(self.valor_pago.value.replace(',', '.'))
+            
+            if valor_pago <= 0:
+                await interaction.response.send_message(
+                    "❌ **Valor inválido!** O valor deve ser maior que zero.",
+                    ephemeral=True
+                )
+                return
+            
+            # Agora fazer a confirmação
+            self.ticket["status"] = "confirmado"
+            self.ticket["valor_pago"] = valor_pago
+            self.ticket["confirmado_por"] = interaction.user.id
+            self.ticket["confirmado_por_nome"] = interaction.user.name
+            self.ticket["confirmado_em"] = datetime.utcnow().isoformat()
+            self.data["usuarios"][self.uid]["ticket_aberto"] = False
+            save_json(TICKETS_FILE, self.data)
+
+            compras = load_json(PURCHASE_COUNT_FILE, {})
+            user_compras = compras.get(self.uid, {"count": 0, "total": 0.0})
+            user_compras["count"] += 1
+            user_compras["total"] += valor_pago
+            compras[self.uid] = user_compras
+            save_json(PURCHASE_COUNT_FILE, compras)
+
+            cliente = interaction.guild.get_member(int(self.uid))
+            
+            # Adicionar cargo ao cliente
+            cargo_adicionado = False
+            if cliente:
+                cargo_adicionado = await self.view.adicionar_cargo_cliente(interaction, cliente)
+                
+            try:
+                embed_dm = discord.Embed(
+                    title="🎉 **PAGAMENTO CONFIRMADO!** 🎉",
+                    description=f"""
+                    **✅ ÓTIMA NOTÍCIA! Seu pagamento foi confirmado com sucesso!**
+                    
+                    **📋 DETALHES DA TRANSAÇÃO:**
+                    • **Status:** ✅ **APROVADO**
+                    • **Valor Pago:** R$ {valor_pago:,.2f}
+                    • **Confirmado por:** {interaction.user.mention}
+                    • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+                    • **Ticket:** #{interaction.channel.id}
+                    
+                    **📦 DETALHES DA COMPRA:**
+                    """,
+                    color=discord.Color.green()
+                )
+                
+                # Adicionar informações específicas da compra
+                if self.ticket["tipo"] == "robux":
+                    quantidade = self.ticket.get("quantidade", "N/A")
+                    embed_dm.add_field(
+                        name="**Tipo:** Robux 💎",
+                        value=f"**Quantidade:** {quantidade}",
+                        inline=True
+                    )
+                elif self.ticket["tipo"] == "gamepass":
+                    gamepass_nome = self.ticket.get("gamepass_nome", "N/A")
+                    embed_dm.add_field(
+                        name="**Tipo:** Gamepass 🎮",
+                        value=f"**Nome:** {gamepass_nome}",
+                        inline=True
+                    )
+                
+                embed_dm.add_field(
+                    name="**🏆 Seu Tier Atual:**",
+                    value=f"**{get_user_tier(int(self.uid))[0]}**",
+                    inline=True
+                )
+                
+                embed_dm.set_footer(text="Obrigado por comprar conosco! Volte sempre! ✨")
+                
+                await cliente.send(embed=embed_dm)
+            except discord.Forbidden:
+                pass  # Cliente não permite DM
+            
+            # Log no canal de logs
+            log_channel = discord.utils.get(interaction.guild.channels, name="logs")
+            if log_channel:
+                user_compras = compras.get(self.uid, {"count": 0, "total": 0.0})
+                log = discord.Embed(
+                    title="📋 **LOG: PAGAMENTO CONFIRMADO**",
+                    description="Um pagamento foi confirmado com sucesso! ✅",
+                    color=discord.Color.green(),
+                    timestamp=datetime.utcnow()
+                )
+                
+                log.add_field(name="👤 Cliente", value=cliente.mention if cliente else f"`{self.uid}`", inline=True)
+                log.add_field(name="💰 Valor Pago", value=f"R$ {valor_pago:,.2f}", inline=True)
+                log.add_field(name="✅ Confirmado por", value=interaction.user.mention, inline=True)
+                log.add_field(name="📊 Total de compras", value=f"`{user_compras['count']}` compras (R$ {user_compras['total']:,.2f})", inline=True)
+                log.add_field(name="🏆 Tier Atual", value=f"`{get_user_tier(int(self.uid))[0]}`", inline=True)
+                log.add_field(name="🎫 Ticket", value=f"#{interaction.channel.id}", inline=True)
+                
+                await log_channel.send(embed=log)
+            
+            # Embed de confirmação no ticket
+            embed_confirma = discord.Embed(
+                title="✅ **PAGAMENTO CONFIRMADO COM SUCESSO!**",
+                description=f"""
+                **🎉 PARABÉNS!** O pagamento foi confirmado e a transação está **APROVADA**!
+                
+                **💰 Valor Pago:** R$ {valor_pago:,.2f}
+                **👤 Cliente:** {cliente.mention if cliente else f'`{self.uid}`'}
+                **✅ Confirmado por:** {interaction.user.mention}
+                **⏰ Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+                """,
+                color=discord.Color.green()
+            )
+            
+            embed_confirma.set_footer(text="Ticket será fechado automaticamente em 10 segundos...")
+            
+            await interaction.response.send_message(embed=embed_confirma)
+            
+            # Desabilitar botões
+            for child in self.button.view.children:
+                child.disabled = True
+            await self.original_interaction.edit_original_response(view=self.button.view)
+            
+            # Fechar ticket automaticamente
+            await asyncio.sleep(10)
+            await interaction.channel.delete()
+            
+        except ValueError:
+            await interaction.response.send_message(
+                "❌ **Valor inválido!** Digite um número válido (ex: 35.00, 50, 100.50)",
+                ephemeral=True
+            )
+
+
 class CalculatorView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -678,171 +831,8 @@ class TicketButtons(discord.ui.View):
             )
             return
 
-        ticket["status"] = "confirmado"
-        ticket["confirmado_por"] = interaction.user.id
-        ticket["confirmado_por_nome"] = interaction.user.name
-        ticket["confirmado_em"] = datetime.utcnow().isoformat()
-        data["usuarios"][uid]["ticket_aberto"] = False
-        save_json(TICKETS_FILE, data)
-
-        compras = load_json(PURCHASE_COUNT_FILE, {})
-        compras[uid] = compras.get(uid, 0) + 1
-        save_json(PURCHASE_COUNT_FILE, compras)
-
-        cliente = interaction.guild.get_member(int(uid))
-        
-        # Adicionar cargo ao cliente
-        cargo_adicionado = False
-        if cliente:
-            cargo_adicionado = await self.adicionar_cargo_cliente(interaction, cliente)
-            
-            try:
-                embed_dm = discord.Embed(
-                    title="🎉 **PAGAMENTO CONFIRMADO!** 🎉",
-                    description=f"""
-                    **✅ ÓTIMA NOTÍCIA! Seu pagamento foi confirmado com sucesso!**
-                    
-                    **📋 DETALHES DA TRANSAÇÃO:**
-                    • **Status:** ✅ **APROVADO**
-                    • **Confirmado por:** {interaction.user.mention}
-                    • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
-                    • **Ticket:** #{interaction.channel.id}
-                    
-                    **📦 DETALHES DA COMPRA:**
-                    """,
-                    color=discord.Color.green()
-                )
-                
-                # Adicionar informações específicas da compra
-                if ticket["tipo"] == "robux":
-                    quantidade = ticket.get("quantidade", "N/A")
-                    embed_dm.add_field(
-                        name="**Tipo:** Robux 💎",
-                        value=f"**Quantidade:** {quantidade:,} Robux",
-                        inline=False
-                    )
-                else:
-                    jogo = ticket.get("jogo", "N/A")
-                    gamepass = ticket.get("gamepass", "N/A")
-                    embed_dm.add_field(
-                        name="**Tipo:** Gamepass 🎮",
-                        value=f"**Jogo:** {jogo}\n**Gamepass:** {gamepass}",
-                        inline=False
-                    )
-                
-                # Adicionar informação sobre o cargo
-                if cargo_adicionado:
-                    embed_dm.add_field(
-                        name="**🏆 CARGO ADICIONADO!**",
-                        value=f"Você recebeu o cargo de **Cliente Verificado** no servidor!",
-                        inline=False
-                    )
-                
-                embed_dm.add_field(
-                    name="**🙏 AGRADECIMENTO:**",
-                    value="Muito obrigado por comprar conosco! Sua satisfação é nossa prioridade! ✨",
-                    inline=False
-                )
-                
-                embed_dm.add_field(
-                    name="**🎁 PRÓXIMOS PASSOS:**",
-                    value="""
-                    1. **Aguarde** a equipe comprar sua gamepass
-                    2. **Receba seus Robux** em 5-7 dias após compra! 
-                    2.5. **Sua Gamepass** cai na hora! 
-                    3. **Verifique seus Robux** em `https://www.roblox.com/transactions` ⭐
-                    """,
-                    inline=False
-                )
-                
-                embed_dm.set_footer(text="⭐ Volte sempre!")
-                await cliente.send(embed=embed_dm)
-            except:
-                pass
-
-        log = discord.Embed(
-            title="📋 **LOG: PAGAMENTO CONFIRMADO**",
-            description="Um pagamento foi confirmado com sucesso! ✅",
-            color=discord.Color.green(),
-            timestamp=datetime.utcnow()
-        )
-        log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
-        log.add_field(name="👤 Cliente", value=cliente.mention if cliente else f"`{uid}`", inline=True)
-        log.add_field(name="💰 Tipo", value=ticket["tipo"].capitalize(), inline=True)
-        
-        # Adicionar informações específicas da compra no log
-        if ticket["tipo"] == "robux":
-            quantidade = ticket.get("quantidade", "N/A")
-            log.add_field(name="📦 Quantidade", value=f"`{quantidade:,} Robux`", inline=True)
-        else:
-            jogo = ticket.get("jogo", "N/A")
-            gamepass = ticket.get("gamepass", "N/A")
-            log.add_field(name="🎮 Jogo", value=f"`{jogo}`", inline=True)
-            log.add_field(name="💎 Gamepass", value=f"`{gamepass}`", inline=True)
-        
-        # Adicionar informação sobre o cargo no log
-        if cargo_adicionado:
-            log.add_field(name="🏆 Cargo", value="✅ **Adicionado**", inline=True)
-        else:
-            log.add_field(name="🏆 Cargo", value="❌ **Não adicionado**", inline=True)
-        
-        log.add_field(name="🕒 Aberto em", value=datetime.fromisoformat(ticket["criado_em"]).strftime('%d/%m %H:%M'), inline=True)
-        log.add_field(name="✅ Confirmado por", value=interaction.user.mention, inline=True)
-        log.add_field(name="📊 Total de compras", value=f"`{compras.get(uid, 0)}` compras", inline=True)
-        log.set_footer(text=f"Staff: {interaction.user.name} • Sistema de Logs")
-        await self.send_log(interaction.guild, log)
-
-        embed_confirma = discord.Embed(
-            title="✅ **PAGAMENTO CONFIRMADO COM SUCESSO!**",
-            description=f"""
-            **🎉 PARABÉNS!** O pagamento foi confirmado e a transação está **APROVADA**!
-            
-            **📋 STATUS DA TRANSAÇÃO:**
-            • **Status:** 🟢 **CONFIRMADO**
-            • **Por:** {interaction.user.mention}
-            • **Em:** {datetime.now().strftime('%d/%m às %H:%M')}
-            • **Cliente:** {cliente.mention if cliente else 'Usuário não encontrado'}
-            
-            **📦 DETALHES DA COMPRA:**
-            """,
-            color=discord.Color.green()
-        )
-        
-        # Adicionar informações específicas da compra
-        if ticket["tipo"] == "robux":
-            quantidade = ticket.get("quantidade", "N/A")
-            embed_confirma.add_field(
-                name="**Tipo:** Robux 💎",
-                value=f"**Quantidade:** {quantidade:,} Robux",
-                inline=False
-            )
-        else:
-            jogo = ticket.get("jogo", "N/A")
-            gamepass = ticket.get("gamepass", "N/A")
-            embed_confirma.add_field(
-                name="**Tipo:** Gamepass 🎮",
-                value=f"**Jogo:** {jogo}\n**Gamepass:** {gamepass}",
-                inline=False
-            )
-        
-        # Adicionar informação sobre o cargo
-        if not cargo_adicionado:
-            embed_confirma.add_field(
-                name="**⚠️ ATENÇÃO:**",
-                value="❌ Não foi possível adicionar o cargo ao cliente.",
-                inline=False
-            )
-        
-        await interaction.channel.send(embed=embed_confirma)
-        
-        mensagem_confirmacao = "✅ **Pagamento confirmado!** O cliente foi notificado e o log foi registrado."
-        if cargo_adicionado:
-            mensagem_confirmacao += " O cargo foi adicionado com sucesso! 🏆"
-        
-        await interaction.response.send_message(
-            mensagem_confirmacao,
-            ephemeral=True
-        )
+        modal = PaymentConfirmationModal(uid, ticket, data, interaction, button, self)
+        await interaction.response.send_modal(modal)
 
     @discord.ui.button(
         label="Pendente",
@@ -1284,7 +1274,9 @@ async def compras(ctx, usuario: discord.Member = None):
         dados = json.load(f)
 
     if usuario:
-        total = dados.get(str(usuario.id), 0)
+        user_data = dados.get(str(usuario.id), {"count": 0, "total": 0.0})
+        total = user_data["count"]
+        total_spent = user_data["total"]
         
         embed = discord.Embed(
             title=f"📊 **HISTÓRICO DE COMPRAS**",
@@ -1292,12 +1284,13 @@ async def compras(ctx, usuario: discord.Member = None):
             color=discord.Color.blue()
         )
         
-        tier_info = get_tier_by_purchases(total)
+        tier_info = get_tier_by_spent(total_spent)
         
         embed.add_field(
             name="🎯 **ESTATÍSTICAS**",
             value=f"""
             **🛍️ Total de Compras:** `{total}`
+            **💰 Total Gasto:** `R$ {total_spent:,.2f}`
             **⭐ Nível do Cliente:** `{tier_info['name']}`
             **💸 Desconto:** `{tier_info['discount']*100:.0f}%`
             """,
@@ -1333,31 +1326,39 @@ async def compras(ctx, usuario: discord.Member = None):
             color=discord.Color.blue()
         )
         
-        dados_ordenados = sorted(dados.items(), key=lambda x: x[1], reverse=True)
+        dados_ordenados = sorted(dados.items(), key=lambda x: x[1]["total"] if isinstance(x[1], dict) else 0, reverse=True)
         
-        total_compras = sum(dados.values())
+        total_compras = sum(d["count"] if isinstance(d, dict) else d for d in dados.values())
+        total_faturamento = sum(d["total"] if isinstance(d, dict) else 0 for d in dados.values())
         clientes_unicos = len(dados)
-        media_compras = total_compras / clientes_unicos
+        media_compras = total_compras / clientes_unicos if clientes_unicos > 0 else 0
         
         embed.add_field(
             name="📈 **ESTATÍSTICAS GERAIS**",
             value=f"""
             **🛍️ Total de Compras:** `{total_compras}`
+            **💰 Faturamento Total:** `R$ {total_faturamento:,.2f}`
             **👥 Clientes Únicos:** `{clientes_unicos}`
             **📊 Média por Cliente:** `{media_compras:.1f} compras`
-            **💰 Faturamento estimado:** `R$ {total_compras * 35:,.2f}`
             """,
             inline=False
         )
         
         top_clientes = []
-        for i, (uid, total) in enumerate(dados_ordenados[:10], 1):
+        for i, (uid, user_data) in enumerate(dados_ordenados[:10], 1):
+            if isinstance(user_data, dict):
+                count = user_data["count"]
+                spent = user_data["total"]
+            else:
+                count = user_data
+                spent = 0.0  # for old data
+            
             membro = ctx.guild.get_member(int(uid))
             nome = membro.mention if membro else f"`Usuário {uid[:8]}...`"
             
-            tier_info = get_tier_by_purchases(total)
+            tier_info = get_tier_by_spent(spent)
             medalha = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"**{i}.**"
-            top_clientes.append(f"{medalha} {nome} → **{total}** compras (**{tier_info['name']}**)")
+            top_clientes.append(f"{medalha} {nome} → **{count}** compras (R$ {spent:,.2f}) (**{tier_info['name']}**)")
         
         embed.add_field(
             name="🏆 **TOP 10 CLIENTES**",
@@ -1384,7 +1385,7 @@ async def calculadora(interaction: discord.Interaction):
         considerando a **taxa de 30%** que o Roblox cobra!
         
         **🏆 SISTEMA DE TIERS**
-        """ + "\n".join([f"• **{tier['name']} ({tier['min_purchases']}+ compras):** {tier['discount']*100:.0f}% de desconto" for tier in TIERS]) + """
+        """ + "\n".join([f"• **{tier['name']} (R$ {tier['min_spent']:,.0f}+ gastos):** {tier['discount']*100:.0f}% de desconto" for tier in TIERS]) + """
         
         **💰 ROBUX → REAIS**
         • Descubra quanto custa X Robux em Reais
@@ -1414,7 +1415,7 @@ async def tiers(interaction: discord.Interaction):
     
     tier_list = []
     for tier in TIERS:
-        tier_list.append(f"**{tier['name']}** ({tier['min_purchases']}+ compras) → {tier['discount']*100:.0f}% desconto")
+        tier_list.append(f"**{tier['name']}** (R$ {tier['min_spent']:,.0f}+ gastos) → {tier['discount']*100:.0f}% desconto")
     
     embed.add_field(
         name="📊 **TIERS DISPONÍVEIS**",
@@ -1425,14 +1426,14 @@ async def tiers(interaction: discord.Interaction):
     embed.add_field(
         name="💡 **COMO FUNCIONA?**",
         value="""
-        • Faça compras para subir de tier
+        • Gasto total determina seu tier
         • Descontos são aplicados automaticamente
         • Use `/calcular [valor] [tier]` para preview
         """,
         inline=False
     )
     
-    embed.set_footer(text="Quanto mais você compra, mais desconto você ganha! ✨")
+    embed.set_footer(text="Quanto mais você gasta, mais desconto você ganha! ✨")
     embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -1454,7 +1455,7 @@ async def set_tier_panel(interaction: discord.Interaction, channel: discord.Text
     
     tier_list = []
     for tier in TIERS:
-        tier_list.append(f"**{tier['name']}** ({tier['min_purchases']}+ compras) → {tier['discount']*100:.0f}% desconto")
+        tier_list.append(f"**{tier['name']}** (R$ {tier['min_spent']:,.0f}+ gastos) → {tier['discount']*100:.0f}% desconto")
     
     embed.add_field(
         name="📊 **TIERS DISPONÍVEIS**",
@@ -1465,14 +1466,14 @@ async def set_tier_panel(interaction: discord.Interaction, channel: discord.Text
     embed.add_field(
         name="💡 **COMO FUNCIONA?**",
         value="""
-        • Faça compras para subir de tier
+        • Gasto total determina seu tier
         • Descontos são aplicados automaticamente
         • Use `/calcular [valor] [tier]` para preview
         """,
         inline=False
     )
     
-    embed.set_footer(text="Quanto mais você compra, mais desconto você ganha! ✨")
+    embed.set_footer(text="Quanto mais você gasta, mais desconto você ganha! ✨")
     embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
     
     try:
