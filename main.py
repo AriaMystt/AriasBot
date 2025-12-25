@@ -36,10 +36,11 @@ PURCHASE_COUNT_FILE = "compras.json"
 # Sistema de Tiers
 TIERS = [
     {"name": "Base", "min_purchases": 0, "discount": 0.0},
-    {"name": "Bronze", "min_purchases": 5, "discount": 0.03},
-    {"name": "Ouro", "min_purchases": 10, "discount": 0.06},
-    {"name": "Diamante", "min_purchases": 5, "discount": 0.09},
-    {"name": "Elite", "min_purchases": 10, "discount": 0.12},
+    {"name": "Bronze", "min_purchases": 3, "discount": 0.02},
+    {"name": "Ouro", "min_purchases": 6, "discount": 0.04},
+    {"name": "Diamante", "min_purchases": 9, "discount": 0.06},
+    {"name": "Platina", "min_purchases": 12, "discount": 0.08},
+    {"name": "Elite", "min_purchases": 15, "discount": 0.10},
 ]
 
 # ======================
@@ -1154,7 +1155,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.hybrid_command(name="calcular", description="Calcula o valor da gamepass necessário para obter X robux líquidos")
 @app_commands.describe(
     valor="Valor em Robux ou Reais (ex: 1000 para robux ou 35,00 para reais)",
-    tier="Tier para preview (opcional: Novo, Regular, VIP)"
+    tier="Tier para preview (opcional: Base, Bronze, Ouro, Platina, Diamante, Elite)"
 )
 async def calcular(ctx, valor: str, tier: str = None):
     """Calcula o valor da gamepass necessário para obter X robux líquidos."""
