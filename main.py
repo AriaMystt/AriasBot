@@ -702,7 +702,7 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
                 color=discord.Color.green()
             )
             
-            embed_confirma.set_footer(text="Ticket será fechado automaticamente em 10 segundos...")
+            embed_confirma.set_footer(text="🎉 Pagamento confirmado! O ticket permanecerá aberto para acompanhamento.")
             
             await interaction.response.send_message(embed=embed_confirma)
             
@@ -710,10 +710,6 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
             for child in self.button.view.children:
                 child.disabled = True
             await self.original_interaction.edit_original_response(view=self.button.view)
-            
-            # Fechar ticket automaticamente
-            await asyncio.sleep(10)
-            await interaction.channel.delete()
             
         except ValueError:
             await interaction.response.send_message(
