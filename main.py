@@ -1256,7 +1256,7 @@ async def calcular(ctx, valor: str, tier: str = None):
             **📝 FORMATOS ACEITOS:**
             • `/calcular 1000` → Calcula quanto custa 1000 Robux
             • `/calcular 35,00` → Calcula quantos Robux você compra com R$ 35
-            • `/calcular 1000 VIP` → Preview do preço para tier VIP
+            • `/calcular 1000 Elite` → Preview do preço para tier Elite
             
             **🏆 TIERS DISPONÍVEIS:** {', '.join([t['name'] for t in TIERS])}
             
@@ -1377,9 +1377,7 @@ async def calculadora(interaction: discord.Interaction):
         considerando a **taxa de 30%** que o Roblox cobra!
         
         **🏆 SISTEMA DE TIERS**
-        • **Novo:** Sem desconto
-        • **Regular (5+ compras):** 5% de desconto
-        • **VIP (10+ compras):** 10% de desconto
+        """ + "\n".join([f"• **{tier['name']} ({tier['min_purchases']}+ compras):** {tier['discount']*100:.0f}% de desconto" for tier in TIERS]) + """
         
         **💰 ROBUX → REAIS**
         • Descubra quanto custa X Robux em Reais
@@ -1392,7 +1390,7 @@ async def calculadora(interaction: discord.Interaction):
         color=discord.Color.gold()
     )
     
-    embed.set_footer(text="Também use `/calcular [valor] [tier]` - Ex: `/calcular 1000` ou `/calcular 35,00 VIP`")
+    embed.set_footer(text="Também use `/calcular [valor] [tier]` - Ex: `/calcular 1000` ou `/calcular 35,00 Elite`")
     embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432609128488.gif")
 
     await interaction.response.send_message(embed=embed, view=CalculatorView(), ephemeral=True)
