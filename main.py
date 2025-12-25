@@ -1437,6 +1437,51 @@ async def tiers(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+@bot.tree.command(name="paineltiers", description="Define o painel de tiers em um canal específico")
+@app_commands.describe(channel="Canal onde o painel de tiers será enviado")
+async def set_tier_panel(interaction: discord.Interaction, channel: discord.TextChannel):
+    """Slash command para definir o painel de tiers em um canal."""
+    # Verificar permissões (apenas administradores ou gerenciar servidor)
+    if not interaction.user.guild_permissions.manage_guild:
+        await interaction.response.send_message("❌ Você não tem permissão para usar este comando. (Requer Gerenciar Servidor)", ephemeral=True)
+        return
+    
+    embed = discord.Embed(
+        title="🏆 **SISTEMA DE TIERS**",
+        description="Veja todos os tiers disponíveis e seus benefícios!",
+        color=discord.Color.gold()
+    )
+    
+    tier_list = []
+    for tier in TIERS:
+        tier_list.append(f"**{tier['name']}** ({tier['min_purchases']}+ compras) → {tier['discount']*100:.0f}% desconto")
+    
+    embed.add_field(
+        name="📊 **TIERS DISPONÍVEIS**",
+        value="\n".join(tier_list),
+        inline=False
+    )
+    
+    embed.add_field(
+        name="💡 **COMO FUNCIONA?**",
+        value="""
+        • Faça compras para subir de tier
+        • Descontos são aplicados automaticamente
+        • Use `/calcular [valor] [tier]` para preview
+        """,
+        inline=False
+    )
+    
+    embed.set_footer(text="Quanto mais você compra, mais desconto você ganha! ✨")
+    embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
+    
+    try:
+        await channel.send(embed=embed)
+        await interaction.response.send_message(f"✅ Painel de tiers enviado com sucesso no canal {channel.mention}!", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Não tenho permissão para enviar mensagens nesse canal.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Erro ao enviar o painel: {str(e)}", ephemeral=True)
 
 @bot.tree.command(name="comprar", description="Abre um ticket para comprar Robux ou Gamepass")
 async def comprar(interaction: discord.Interaction):
