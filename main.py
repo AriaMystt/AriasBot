@@ -1263,107 +1263,113 @@ async def calcular(ctx, valor: str, tier: str = None):
 
 @bot.hybrid_command(name="compras", description="Mostra o histórico de compras")
 @app_commands.describe(usuario="Usuário para verificar histórico (opcional)")
-@commands.has_permissions(administrator=True)
 async def compras(ctx, usuario: discord.Member = None):
-    """Mostra o histórico de compras de um usuário ou de todos."""
+    """Mostra o histórico de compras de um usuário."""
     with open("compras.json", "r", encoding="utf-8") as f:
         dados = json.load(f)
 
-    if usuario:
-        user_data = dados.get(str(usuario.id), {"count": 0, "total": 0.0})
-        total = user_data["count"]
-        total_spent = user_data["total"]
-        
-        embed = discord.Embed(
-            title=f"📊 **HISTÓRICO DE COMPRAS**",
-            description=f"**👤 CLIENTE:** {usuario.mention}",
-            color=discord.Color.blue()
-        )
-        
-        tier_info = get_tier_by_spent(total_spent)
-        
-        embed.add_field(
-            name="🎯 **ESTATÍSTICAS**",
-            value=f"""
-            **🛍️ Total de Compras:** `{total}`
-            **💰 Total Gasto:** `R$ {total_spent:,.2f}`
-            **⭐ Nível do Cliente:** `{tier_info['name']}`
-            **💸 Desconto:** `{tier_info['discount']*100:.0f}%`
-            """,
-            inline=False
-        )
-        
-        embed.add_field(
-            name="📈 **DESEMPENHO**",
-            value=f"""
-            • **Primeira compra:** {'Sim' if total > 0 else 'Não'}
-            • **Frequência:** {'Alta' if total >= 5 else 'Média' if total >= 2 else 'Baixa'}
-            • **Status:** {'Cliente VIP 🏆' if total >= 10 else 'Cliente Fiel ⭐' if total >= 5 else 'Cliente Novo 🌱'}
-            """,
-            inline=True
-        )
-        
-        embed.set_footer(text=f"Consultado por {ctx.author.name}")
-        
-        await ctx.send(embed=embed)
-    else:
-        if not dados:
-            embed = discord.Embed(
-                title="📭 **SEM HISTÓRICO**",
-                description="Nenhuma compra registrada ainda! O primeiro cliente está por vir! 🎉",
-                color=discord.Color.orange()
-            )
-            await ctx.send(embed=embed)
-            return
+    if not usuario:
+        usuario = ctx.author
 
+    user_data = dados.get(str(usuario.id), {"count": 0, "total": 0.0})
+    total = user_data["count"]
+    total_spent = user_data["total"]
+    
+    embed = discord.Embed(
+        title=f"📊 **HISTÓRICO DE COMPRAS**",
+        description=f"**👤 CLIENTE:** {usuario.mention}",
+        color=discord.Color.blue()
+    )
+    
+    tier_info = get_tier_by_spent(total_spent)
+    
+    embed.add_field(
+        name="🎯 **ESTATÍSTICAS**",
+        value=f"""
+        **🛍️ Total de Compras:** `{total}`
+        **💰 Total Gasto:** `R$ {total_spent:,.2f}`
+        **⭐ Nível do Cliente:** `{tier_info['name']}`
+        **💸 Desconto:** `{tier_info['discount']*100:.0f}%`
+        """,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="📈 **DESEMPENHO**",
+        value=f"""
+        • **Primeira compra:** {'Sim' if total > 0 else 'Não'}
+        • **Frequência:** {'Alta' if total >= 5 else 'Média' if total >= 2 else 'Baixa'}
+        • **Status:** {'Cliente VIP 🏆' if total >= 10 else 'Cliente Fiel ⭐' if total >= 5 else 'Cliente Novo 🌱'}
+        """,
+        inline=True
+    )
+    
+    embed.set_footer(text=f"Consultado por {ctx.author.name}")
+    
+    await ctx.send(embed=embed)
+
+@bot.hybrid_command(name="loja", description="Mostra estatísticas gerais da loja")
+@commands.has_permissions(administrator=True)
+async def loja(ctx):
+    """Mostra estatísticas gerais da loja."""
+    with open("compras.json", "r", encoding="utf-8") as f:
+        dados = json.load(f)
+
+    if not dados:
         embed = discord.Embed(
-            title="📊 **HISTÓRICO GERAL DE COMPRAS**",
-            description="Aqui estão todas as compras realizadas na nossa loja! 📈",
-            color=discord.Color.blue()
+            title="📭 **SEM HISTÓRICO**",
+            description="Nenhuma compra registrada ainda! O primeiro cliente está por vir! 🎉",
+            color=discord.Color.orange()
         )
-        
-        dados_ordenados = sorted(dados.items(), key=lambda x: x[1]["total"] if isinstance(x[1], dict) else 0, reverse=True)
-        
-        total_compras = sum(d["count"] if isinstance(d, dict) else d for d in dados.values())
-        total_faturamento = sum(d["total"] if isinstance(d, dict) else 0 for d in dados.values())
-        clientes_unicos = len(dados)
-        media_compras = total_compras / clientes_unicos if clientes_unicos > 0 else 0
-        
-        embed.add_field(
-            name="📈 **ESTATÍSTICAS GERAIS**",
-            value=f"""
-            **🛍️ Total de Compras:** `{total_compras}`
-            **💰 Faturamento Total:** `R$ {total_faturamento:,.2f}`
-            **👥 Clientes Únicos:** `{clientes_unicos}`
-            **📊 Média por Cliente:** `{media_compras:.1f} compras`
-            """,
-            inline=False
-        )
-        
-        top_clientes = []
-        for i, (uid, user_data) in enumerate(dados_ordenados[:10], 1):
-            if isinstance(user_data, dict):
-                count = user_data["count"]
-                spent = user_data["total"]
-            else:
-                count = user_data
-                spent = 0.0  # for old data
-            
-            membro = ctx.guild.get_member(int(uid))
-            nome = membro.mention if membro else f"`Usuário {uid[:8]}...`"
-            
-            tier_info = get_tier_by_spent(spent)
-            medalha = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"**{i}.**"
-            top_clientes.append(f"{medalha} {nome} → **{count}** compras (R$ {spent:,.2f}) (**{tier_info['name']}**)")
-        
-        embed.add_field(
-            name="🏆 **TOP 10 CLIENTES**",
-            value="\n".join(top_clientes) if top_clientes else "Nenhum cliente ainda!",
-            inline=False
-        )
-        
-        embed.set_footer(text=f"✨ {total_compras} compras realizadas com sucesso!")
         await ctx.send(embed=embed)
+        return
+
+    embed = discord.Embed(
+        title="🏪 **ESTATÍSTICAS DA LOJA**",
+        description="Aqui estão todas as estatísticas da nossa loja! 📈",
+        color=discord.Color.blue()
+    )
+    
+    dados_ordenados = sorted(dados.items(), key=lambda x: x[1]["total"] if isinstance(x[1], dict) else 0, reverse=True)
+    
+    total_compras = sum(d["count"] if isinstance(d, dict) else d for d in dados.values())
+    total_faturamento = sum(d["total"] if isinstance(d, dict) else 0 for d in dados.values())
+    clientes_unicos = len(dados)
+    
+    embed.add_field(
+        name="📈 **ESTATÍSTICAS GERAIS**",
+        value=f"""
+        **🛍️ Total de Compras:** `{total_compras}`
+        **💰 Faturamento Total:** `R$ {total_faturamento:,.2f}`
+        **👥 Clientes Únicos:** `{clientes_unicos}`
+        """,
+        inline=False
+    )
+    
+    top_clientes = []
+    for i, (uid, user_data) in enumerate(dados_ordenados[:10], 1):
+        if isinstance(user_data, dict):
+            count = user_data["count"]
+            spent = user_data["total"]
+        else:
+            count = user_data
+            spent = 0.0  # for old data
+        
+        membro = ctx.guild.get_member(int(uid))
+        nome = membro.mention if membro else f"`Usuário {uid[:8]}...`"
+        
+        tier_info = get_tier_by_spent(spent)
+        medalha = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"**{i}.**"
+        top_clientes.append(f"{medalha} {nome} → **{count}** compras (R$ {spent:,.2f}) (**{tier_info['name']}**)")
+
+    embed.add_field(
+        name="🏆 **TOP 10 CLIENTES**",
+        value="\n".join(top_clientes) if top_clientes else "Nenhum cliente ainda!",
+        inline=False
+    )
+    
+    embed.set_footer(text=f"✨ {total_compras} compras realizadas com sucesso!")
+    await ctx.send(embed=embed)
 
 
 # ======================
