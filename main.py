@@ -77,6 +77,13 @@ def get_tier_by_purchases(purchases):
             return tier
     return TIERS[0]
 
+def get_tier_by_name(name):
+    """Retorna o tier baseado no nome, case-insensitive."""
+    for tier in TIERS:
+        if tier["name"].lower() == name.lower():
+            return tier
+    return None
+
 # ======================
 # MODAIS PARA COMPRAS (MANTIDO)
 # ======================
