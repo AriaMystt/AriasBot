@@ -33,6 +33,15 @@ ROBLOX_TAX = 0.30   # Roblox pega 30% da gamepass
 TICKETS_FILE = "tickets.json"
 PURCHASE_COUNT_FILE = "compras.json"
 
+# Sistema de Tiers
+TIERS = [
+    {"name": "Base", "min_purchases": 0, "discount": 0.0},
+    {"name": "Bronze", "min_purchases": 5, "discount": 0.03},
+    {"name": "Ouro", "min_purchases": 10, "discount": 0.06},
+    {"name": "Diamante", "min_purchases": 5, "discount": 0.09},
+    {"name": "Elite", "min_purchases": 10, "discount": 0.12},
+]
+
 # ======================
 # FUNÇÕES DE CÁLCULO
 # ======================
@@ -46,6 +55,26 @@ def calcular_robux_liquidos(valor_gamepass):
     """Calcula quantos robux líquidos recebe de uma gamepass."""
     robux_liquidos = valor_gamepass * (1 - ROBLOX_TAX)
     return round(robux_liquidos)
+
+def get_user_tier(user_id):
+    """Retorna o tier do usuário e o desconto baseado no histórico de compras."""
+    data = load_json(PURCHASE_COUNT_FILE, {})
+    purchases = data.get(str(user_id), 0)
+    
+    # Encontra o tier apropriado baseado no número de compras
+    for tier in reversed(TIERS):  # Começa do maior para o menor
+        if purchases >= tier["min_purchases"]:
+            return tier["name"], tier["discount"]
+    
+    # Fallback para o primeiro tier
+    return TIERS[0]["name"], TIERS[0]["discount"]
+
+def get_tier_by_purchases(purchases):
+    """Retorna o tier baseado no número de compras."""
+    for tier in reversed(TIERS):  # Começa do maior para o menor
+        if purchases >= tier["min_purchases"]:
+            return tier
+    return TIERS[0]
 
 # ======================
 # MODAIS PARA COMPRAS (MANTIDO)
@@ -377,7 +406,11 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
                 )
                 return
             
+            # Verificar tier do usuário
+            tier, discount = get_user_tier(interaction.user.id)
+            
             valor_reais = robux_liquidos * ROBUX_RATE
+            valor_reais_desconto = valor_reais * (1 - discount)
             valor_gamepass = calcular_valor_gamepass(robux_liquidos)
             taxa_roblox = valor_gamepass - robux_liquidos
             percentual_taxa = (taxa_roblox / valor_gamepass) * 100
@@ -388,7 +421,7 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
                 timestamp=datetime.utcnow()
             )
             
-            embed.description = "✨ **Aqui está o seu cálculo detalhado!** ✨"
+            embed.description = f"✨ **Aqui está o seu cálculo detalhado!** ✨\n\n🏆 **Seu Tier:** {tier} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'})"
             embed.add_field(
                 name="📦 **SEU PEDIDO**",
                 value=f"```💎 {robux_liquidos:,} Robux Líquidos```",
@@ -397,8 +430,14 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
             embed.add_field(
                 name="💵 **VALOR EM REAIS**",
                 value=f"```💰 R$ {valor_reais:,.2f}```",
-                inline=False
+                inline=True
             )
+            if discount > 0:
+                embed.add_field(
+                    name="💸 **COM DESCONTO**",
+                    value=f"```💰 R$ {valor_reais_desconto:,.2f}```",
+                    inline=True
+                )
             embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
             embed.add_field(
                 name="🎯 **VALOR DA GAMEPASS**",
@@ -422,7 +461,7 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
                 • **Para receber {robux_liquidos:,} Robux líquidos**, você precisa criar uma gamepass de **{valor_gamepass:,} Robux**
                 • O Roblox retém **{percentual_taxa:.0f}%** ({taxa_roblox:,} Robux) como taxa
                 • Você fica com **{robux_liquidos:,} Robux** (70% do valor da gamepass)
-                • **Preço final:** R$ {valor_reais:,.2f}
+                • **Preço final:** R$ {valor_reais_desconto:,.2f if discount > 0 else valor_reais:,.2f}
                 """,
                 inline=False
             )
@@ -459,7 +498,11 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
                 )
                 return
             
-            robux_liquidos = round(valor_reais / ROBUX_RATE)
+            # Verificar tier do usuário
+            tier, discount = get_user_tier(interaction.user.id)
+            
+            effective_rate = ROBUX_RATE * (1 - discount)
+            robux_liquidos = round(valor_reais / effective_rate)
             valor_gamepass = calcular_valor_gamepass(robux_liquidos)
             taxa_roblox = valor_gamepass - robux_liquidos
             percentual_taxa = (taxa_roblox / valor_gamepass) * 100
@@ -470,7 +513,7 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
                 timestamp=datetime.utcnow()
             )
             
-            embed.description = "✨ **Transformando seu dinheiro em Robux!** ✨"
+            embed.description = f"✨ **Transformando seu dinheiro em Robux!** ✨\n\n🏆 **Seu Tier:** {tier} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'})"
             embed.add_field(
                 name="💵 **SEU INVESTIMENTO**",
                 value=f"```💰 R$ {valor_reais:,.2f}```",
@@ -497,6 +540,13 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
                 value=f"```💎 {robux_liquidos:,} Robux```",
                 inline=True
             )
+            if discount > 0:
+                embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
+                embed.add_field(
+                    name="💸 **COM DESCONTO APLICADO**",
+                    value=f"Taxa efetiva: R$ {effective_rate:.3f} por Robux",
+                    inline=False
+                )
             embed.set_footer(
                 text=f"✨ Conversão para {interaction.user.name} • ⚡",
                 icon_url=interaction.user.avatar.url if interaction.user.avatar else None
@@ -1102,22 +1152,38 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # ======================
 
 @bot.hybrid_command(name="calcular", description="Calcula o valor da gamepass necessário para obter X robux líquidos")
-@app_commands.describe(valor="Valor em Robux ou Reais (ex: 1000 ou 35,00)")
-async def calcular(ctx, valor: str):
+@app_commands.describe(
+    valor="Valor em Robux ou Reais (ex: 1000 para robux ou 35,00 para reais)",
+    tier="Tier para preview (opcional: Novo, Regular, VIP)"
+)
+async def calcular(ctx, valor: str, tier: str = None):
     """Calcula o valor da gamepass necessário para obter X robux líquidos."""
     try:
+        # Verificar tier do usuário ou usar o especificado
+        if tier:
+            tier_info = get_tier_by_name(tier)
+            if not tier_info:
+                await ctx.send(f"❌ **Tier inválido!** Tiers disponíveis: {', '.join([t['name'] for t in TIERS])}")
+                return
+            tier_name, discount = tier_info["name"], tier_info["discount"]
+            is_preview = True
+        else:
+            tier_name, discount = get_user_tier(ctx.author.id)
+            is_preview = False
+        
         valor_clean = valor.replace('.', '').replace(',', '.')
         
         if '.' in valor_clean:
             valor_reais = float(valor_clean)
-            robux_liquidos = round(valor_reais / ROBUX_RATE)
+            effective_rate = ROBUX_RATE * (1 - discount)
+            robux_liquidos = round(valor_reais / effective_rate)
             valor_gamepass = calcular_valor_gamepass(robux_liquidos)
             taxa_roblox = valor_gamepass - robux_liquidos
             percentual_taxa = (taxa_roblox / valor_gamepass) * 100
             
             embed = discord.Embed(
                 title="**CALCULADORA DE ROBUX**",
-                description=f"✨ **Cálculo para R$ {valor_reais:,.2f}** ✨",
+                description=f"✨ **Cálculo para R$ {valor_reais:,.2f}** ✨\n\n🏆 **Tier:** {tier_name} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'}){' (Preview)' if is_preview else ''}",
                 color=0x5865F2,
                 timestamp=datetime.utcnow()
             )
@@ -1141,13 +1207,14 @@ async def calcular(ctx, valor: str):
         else:
             robux_liquidos = int(valor_clean)
             valor_reais = robux_liquidos * ROBUX_RATE
+            valor_reais_desconto = valor_reais * (1 - discount)
             valor_gamepass = calcular_valor_gamepass(robux_liquidos)
             taxa_roblox = valor_gamepass - robux_liquidos
             percentual_taxa = (taxa_roblox / valor_gamepass) * 100
             
             embed = discord.Embed(
                 title="CALCULADORA DE ROBUX",
-                description=f"✨ **Cálculo para {robux_liquidos:,} Robux** ✨",
+                description=f"✨ **Cálculo para {robux_liquidos:,} Robux** ✨\n\n🏆 **Tier:** {tier_name} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'}){' (Preview)' if is_preview else ''}",
                 color=0x00ff00,
                 timestamp=datetime.utcnow()
             )
@@ -1162,6 +1229,12 @@ async def calcular(ctx, valor: str):
                 value=f"```💰 R$ {valor_reais:,.2f}```",
                 inline=True
             )
+            if discount > 0:
+                embed.add_field(
+                    name="💸 **COM DESCONTO**",
+                    value=f"```💰 R$ {valor_reais_desconto:,.2f}```",
+                    inline=True
+                )
             embed.add_field(
                 name="🎮 **VALOR DA GAMEPASS**",
                 value=f"```🎮 {valor_gamepass:,} Robux```",
@@ -1169,7 +1242,7 @@ async def calcular(ctx, valor: str):
             )
         
         embed.set_footer(
-            text=f"✨ Calculado para {ctx.author.name} • ⚡ Use /comprar para abrir um ticket!",
+            text=f"✨ Calculado {'(Preview)' if is_preview else ''} para {ctx.author.name} • ⚡ Use /comprar para abrir um ticket!",
             icon_url=ctx.author.avatar.url if ctx.author.avatar else None
         )
         
@@ -1178,10 +1251,13 @@ async def calcular(ctx, valor: str):
     except ValueError:
         embed_erro = discord.Embed(
             title="❌ **VALOR INVÁLIDO!**",
-            description="""
+            description=f"""
             **📝 FORMATOS ACEITOS:**
             • `/calcular 1000` → Calcula quanto custa 1000 Robux
             • `/calcular 35,00` → Calcula quantos Robux você compra com R$ 35
+            • `/calcular 1000 VIP` → Preview do preço para tier VIP
+            
+            **🏆 TIERS DISPONÍVEIS:** {', '.join([t['name'] for t in TIERS])}
             
             **💡 DICA:**
             Use `/calculadora` para uma experiência mais fácil com botões!
@@ -1208,11 +1284,14 @@ async def compras(ctx, usuario: discord.Member = None):
             color=discord.Color.blue()
         )
         
+        tier_info = get_tier_by_purchases(total)
+        
         embed.add_field(
             name="🎯 **ESTATÍSTICAS**",
             value=f"""
             **🛍️ Total de Compras:** `{total}`
-            **⭐ Nível do Cliente:** `{'VIP' if total >= 10 else 'Regular' if total >= 5 else 'Novo'}`
+            **⭐ Nível do Cliente:** `{tier_info['name']}`
+            **💸 Desconto:** `{tier_info['discount']*100:.0f}%`
             """,
             inline=False
         )
@@ -1295,6 +1374,11 @@ async def calculadora(interaction: discord.Interaction):
         Nosso sistema calcula **automaticamente** o valor da gamepass necessária,
         considerando a **taxa de 30%** que o Roblox cobra!
         
+        **🏆 SISTEMA DE TIERS**
+        • **Novo:** Sem desconto
+        • **Regular (5+ compras):** 5% de desconto
+        • **VIP (10+ compras):** 10% de desconto
+        
         **💰 ROBUX → REAIS**
         • Descubra quanto custa X Robux em Reais
         • Veja o valor exato da gamepass necessária
@@ -1306,10 +1390,45 @@ async def calculadora(interaction: discord.Interaction):
         color=discord.Color.gold()
     )
     
-    embed.set_footer(text="Também use `/calcular [valor]` - Ex: `/calcular 1000` ou `/calcular 35,00`")
+    embed.set_footer(text="Também use `/calcular [valor] [tier]` - Ex: `/calcular 1000` ou `/calcular 35,00 VIP`")
     embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432609128488.gif")
 
     await interaction.response.send_message(embed=embed, view=CalculatorView(), ephemeral=True)
+
+
+@bot.tree.command(name="tiers", description="Mostra todos os tiers disponíveis e seus benefícios")
+async def tiers(interaction: discord.Interaction):
+    """Slash command para mostrar os tiers."""
+    embed = discord.Embed(
+        title="🏆 **SISTEMA DE TIERS**",
+        description="Veja todos os tiers disponíveis e seus benefícios!",
+        color=discord.Color.gold()
+    )
+    
+    tier_list = []
+    for tier in TIERS:
+        tier_list.append(f"**{tier['name']}** ({tier['min_purchases']}+ compras) → {tier['discount']*100:.0f}% desconto")
+    
+    embed.add_field(
+        name="📊 **TIERS DISPONÍVEIS**",
+        value="\n".join(tier_list),
+        inline=False
+    )
+    
+    embed.add_field(
+        name="💡 **COMO FUNCIONA?**",
+        value="""
+        • Faça compras para subir de tier
+        • Descontos são aplicados automaticamente
+        • Use `/calcular [valor] [tier]` para preview
+        """,
+        inline=False
+    )
+    
+    embed.set_footer(text="Quanto mais você compra, mais desconto você ganha! ✨")
+    embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 @bot.tree.command(name="comprar", description="Abre um ticket para comprar Robux ou Gamepass")
