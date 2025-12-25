@@ -1271,6 +1271,11 @@ async def compras(ctx, usuario: discord.Member = None):
     if not usuario:
         usuario = ctx.author
 
+    if usuario != ctx.author:
+        if STAFF_ROLE_ID not in [r.id for r in ctx.author.roles]:
+            await ctx.send("❌ **Acesso negado!** Você só pode ver seu próprio histórico de compras.")
+            return
+
     user_data = dados.get(str(usuario.id), {"count": 0, "total": 0.0})
     total = user_data["count"]
     total_spent = user_data["total"]
@@ -1336,18 +1341,44 @@ async def loja(ctx):
     total_faturamento = sum(d["total"] if isinstance(d, dict) else 0 for d in dados.values())
     clientes_unicos = len(dados)
     
+    # Calcular médias
+    avg_order_value = total_faturamento / total_compras if total_compras > 0 else 0
+    avg_customer_value = total_faturamento / clientes_unicos if clientes_unicos > 0 else 0
+    
+    # Distribuição de tiers
+    tier_counts = {}
+    tier_revenue = {}
+    for uid, user_data in dados.items():
+        if isinstance(user_data, dict):
+            spent = user_data["total"]
+        else:
+            spent = 0.0
+        tier = get_tier_by_spent(spent)["name"]
+        tier_counts[tier] = tier_counts.get(tier, 0) + 1
+        tier_revenue[tier] = tier_revenue.get(tier, 0) + spent
+    
+    tier_distribution = "\n".join([f"• **{tier}:** {count} clientes (R$ {tier_revenue[tier]:,.2f})" for tier, count in sorted(tier_counts.items(), key=lambda x: x[1], reverse=True)])
+    
     embed.add_field(
         name="📈 **ESTATÍSTICAS GERAIS**",
         value=f"""
         **🛍️ Total de Compras:** `{total_compras}`
         **💰 Faturamento Total:** `R$ {total_faturamento:,.2f}`
         **👥 Clientes Únicos:** `{clientes_unicos}`
+        **📊 Ticket Médio:** `R$ {avg_order_value:,.2f}`
+        **💎 Valor Médio por Cliente:** `R$ {avg_customer_value:,.2f}`
         """,
         inline=False
     )
     
+    embed.add_field(
+        name="🏆 **DISTRIBUIÇÃO DE TIERS**",
+        value=tier_distribution if tier_distribution else "Nenhum cliente ainda!",
+        inline=True
+    )
+    
     top_clientes = []
-    for i, (uid, user_data) in enumerate(dados_ordenados[:10], 1):
+    for i, (uid, user_data) in enumerate(dados_ordenados[:5], 1):
         if isinstance(user_data, dict):
             count = user_data["count"]
             spent = user_data["total"]
@@ -1359,11 +1390,12 @@ async def loja(ctx):
         nome = membro.mention if membro else f"`Usuário {uid[:8]}...`"
         
         tier_info = get_tier_by_spent(spent)
+        percentage = (spent / total_faturamento * 100) if total_faturamento > 0 else 0
         medalha = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"**{i}.**"
-        top_clientes.append(f"{medalha} {nome} → **{count}** compras (R$ {spent:,.2f}) (**{tier_info['name']}**)")
+        top_clientes.append(f"{medalha} {nome} → R$ {spent:,.2f} ({percentage:.1f}%) (**{tier_info['name']}**)")
 
     embed.add_field(
-        name="🏆 **TOP 10 CLIENTES**",
+        name="💎 **TOP REVENUE CONTRIBUTORS**",
         value="\n".join(top_clientes) if top_clientes else "Nenhum cliente ainda!",
         inline=False
     )
