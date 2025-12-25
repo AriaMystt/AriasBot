@@ -437,7 +437,7 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
             embed.description = f"✨ **Aqui está o seu cálculo detalhado!** ✨\n\n🏆 **Seu Tier:** {tier} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'})"
             embed.add_field(
                 name="📦 **SEU PEDIDO**",
-                value=f"```💎 {robux_liquidos:,} Robux Líquidos```",
+                value=f"```💎 {robux_liquidos:,} Robux```",
                 inline=False
             )
             embed.add_field(
