@@ -407,8 +407,11 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            robux_liquidos = int(self.robux.value)
-            
+            # aceitar separadores de milhares como '.' e ',' e limpar entrada
+            robux_raw = self.robux.value.strip()
+            robux_clean = robux_raw.replace('.', '').replace(',', '')
+            robux_liquidos = int(robux_clean)
+
             if robux_liquidos <= 0:
                 await interaction.response.send_message(
                     "🤔 **Oops!** Você precisa digitar um número maior que zero!",
@@ -465,13 +468,15 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
                 inline=True
             )
             embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
+            # Determinar preço final exibido com ou sem desconto
+            preco_final = valor_reais_desconto if discount > 0 else valor_reais
             embed.add_field(
                 name="💡 **COMO FUNCIONA?**",
                 value=f"""
                 • **Para receber {robux_liquidos:,} Robux líquidos**, você precisa criar uma gamepass de **{valor_gamepass:,} Robux**
                 • O Roblox retém **{percentual_taxa:.0f}%** ({taxa_roblox:,} Robux) como taxa
                 • Você fica com **{robux_liquidos:,} Robux** (70% do valor da gamepass)
-                • **Preço final:** R$ {valor_reais_desconto:,.2f if discount > 0 else valor_reais:,.2f}
+                • **Preço final:** R$ {preco_final:,.2f}
                 """,
                 inline=False
             )
@@ -499,7 +504,10 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            valor_reais = float(self.reais.value)
+            # aceitar vírgulas como separador decimal
+            reais_raw = self.reais.value.strip()
+            reais_clean = reais_raw.replace(',', '.')
+            valor_reais = float(reais_clean)
             
             if valor_reais <= 0:
                 await interaction.response.send_message(
@@ -512,9 +520,10 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
             tier, discount = get_user_tier(interaction.user.id)
             
             effective_rate = ROBUX_RATE * (1 - discount)
-            robux_liquidos = round(valor_reais / effective_rate)
-            valor_gamepass = calcular_valor_gamepass(robux_liquidos)
-            taxa_roblox = valor_gamepass - robux_liquidos
+            robux_with_discount = round(valor_reais / effective_rate)
+            robux_without_discount = round(valor_reais / ROBUX_RATE)
+            valor_gamepass = calcular_valor_gamepass(robux_with_discount)
+            taxa_roblox = valor_gamepass - robux_with_discount
             percentual_taxa = (taxa_roblox / valor_gamepass) * 100
             
             embed = discord.Embed(
@@ -530,10 +539,16 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
                 inline=False
             )
             embed.add_field(
-                name="🎁 **ROBUX QUE VOCÊ RECEBE**",
-                value=f"```💎 {robux_liquidos:,} Robux```",
+                name="🎁 **ROBUX" + (" COM SEU DESCONTO**" if discount > 0 else "**"),
+                value=f"```💎 {robux_with_discount:,} Robux```",
                 inline=False
             )
+            if discount > 0:
+                embed.add_field(
+                    name="💸 **ROBUX SEM DESCONTO**",
+                    value=f"```💎 {robux_without_discount:,} Robux```",
+                    inline=False
+                )
             embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
             embed.add_field(
                 name="🎯 **VALOR DA GAMEPASS**",
@@ -547,14 +562,14 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
             )
             embed.add_field(
                 name="💎 **VOCÊ RECEBE**",
-                value=f"```💎 {robux_liquidos:,} Robux```",
+                value=f"```💎 {robux_with_discount:,} Robux```",
                 inline=True
             )
             if discount > 0:
                 embed.add_field(name="\u200b", value="━━━━━━━━━━━━━━━━━━━━", inline=False)
                 embed.add_field(
                     name="💸 **COM DESCONTO APLICADO**",
-                    value=f"Taxa efetiva: R$ {effective_rate:.3f} por Robux",
+                    value=f"Taxa efetiva: R$ {effective_rate:.3f} por Robux\n**Você economiza:** R$ {(robux_without_discount - robux_with_discount) * ROBUX_RATE:,.2f}",
                     inline=False
                 )
             embed.set_footer(
