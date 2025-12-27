@@ -2,13 +2,16 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import os
 import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Timezone configuration (GMT -3)
+GMT_MINUS_3 = timezone(timedelta(hours=-3))
 
 # ======================
 # CONFIGURAÇÕES
@@ -198,7 +201,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
             "canal_id": channel.id,
             "tipo": tipo,
             "status": "aberto",
-            "criado_em": datetime.utcnow().isoformat(),
+            "criado_em": datetime.now(GMT_MINUS_3).isoformat(),
             "cliente_nome": user.name,
             "quantidade": quantidade
         })
@@ -223,7 +226,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
             3. **Realize o pagamento** - Envie o comprovante quando solicitado
             """,
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(GMT_MINUS_3)
         )
         
         # Adicionar valor em reais calculado
@@ -349,7 +352,7 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             "canal_id": channel.id,
             "tipo": tipo,
             "status": "aberto",
-            "criado_em": datetime.utcnow().isoformat(),
+            "criado_em": datetime.now(GMT_MINUS_3).isoformat(),
             "cliente_nome": user.name,
             "jogo": jogo,
             "gamepass": gamepass
@@ -377,7 +380,7 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             4. **Realize o pagamento** - Envie o comprovante quando solicitado
             """,
             color=discord.Color.blue(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(GMT_MINUS_3)
         )
         
         embed_ticket.add_field(
@@ -468,7 +471,7 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
             embed = discord.Embed(
                 title="🎮 **CONVERSÃO ROBUX → REAIS** 🎮",
                 color=0x00ff00,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(GMT_MINUS_3)
             )
             
             embed.description = f"✨ **Aqui está o seu cálculo detalhado!** ✨\n\n🏆 **Seu Tier:** {tier} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'})"
@@ -566,7 +569,7 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
             embed = discord.Embed(
                 title="💎 **CONVERSÃO REAIS → ROBUX** 💎",
                 color=0x5865F2,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(GMT_MINUS_3)
             )
             
             embed.description = f"✨ **Transformando seu dinheiro em Robux!** ✨\n\n🏆 **Seu Tier:** {tier} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'})"
@@ -656,7 +659,7 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
             self.ticket["valor_pago"] = valor_pago
             self.ticket["confirmado_por"] = interaction.user.id
             self.ticket["confirmado_por_nome"] = interaction.user.name
-            self.ticket["confirmado_em"] = datetime.utcnow().isoformat()
+            self.ticket["confirmado_em"] = datetime.now(GMT_MINUS_3).isoformat()
             self.data["usuarios"][self.uid]["ticket_aberto"] = False
             save_json(TICKETS_FILE, self.data)
 
@@ -728,7 +731,7 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
                     title="📋 **LOG: PAGAMENTO CONFIRMADO**",
                     description="Um pagamento foi confirmado com sucesso! ✅",
                     color=discord.Color.green(),
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(GMT_MINUS_3)
                 )
                 
                 log.add_field(name="👤 Cliente", value=cliente.mention if cliente else f"`{self.uid}`", inline=True)
@@ -911,7 +914,7 @@ class TicketButtons(discord.ui.View):
             title="📋 **LOG: PAGAMENTO PENDENTE**",
             description="Um pagamento foi marcado como pendente. ⏳",
             color=discord.Color.orange(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(GMT_MINUS_3)
         )
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Staff", value=interaction.user.mention, inline=True)
@@ -959,7 +962,7 @@ class TicketButtons(discord.ui.View):
             return
 
         ticket["status"] = "cancelado"
-        ticket["fechado_em"] = datetime.utcnow().isoformat()
+        ticket["fechado_em"] = datetime.now(GMT_MINUS_3).isoformat()
         ticket["fechado_por"] = interaction.user.id
         data["usuarios"][uid]["ticket_aberto"] = False
         save_json(TICKETS_FILE, data)
@@ -968,7 +971,7 @@ class TicketButtons(discord.ui.View):
             title="📋 **LOG: COMPRA CANCELADA**",
             description="Uma compra foi cancelada pelo cliente. ❌",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(GMT_MINUS_3)
         )
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Cliente", value=interaction.user.mention, inline=True)
@@ -1065,7 +1068,7 @@ class TicketButtons(discord.ui.View):
             return
 
         ticket["status"] = "fechado"
-        ticket["fechado_em"] = datetime.utcnow().isoformat()
+        ticket["fechado_em"] = datetime.now(GMT_MINUS_3).isoformat()
         ticket["fechado_por"] = interaction.user.id
         ticket["fechado_por_nome"] = interaction.user.name
         data["usuarios"][uid]["ticket_aberto"] = False
@@ -1075,7 +1078,7 @@ class TicketButtons(discord.ui.View):
             title="📋 **LOG: TICKET FECHADO**",
             description="Um ticket foi fechado pela equipe. 🔒",
             color=discord.Color.blurple(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(GMT_MINUS_3)
         )
         log.add_field(name="🎫 Ticket", value=f"`{interaction.channel.name}`", inline=True)
         log.add_field(name="👤 Staff", value=interaction.user.mention, inline=True)
@@ -1093,7 +1096,7 @@ class TicketButtons(discord.ui.View):
             log.add_field(name="💎 Gamepass", value=f"`{gamepass}`", inline=True)
         
         log.add_field(name="📌 Status", value="🔵 **FECHADO**", inline=True)
-        log.add_field(name="⏰ Duração", value=f"`{(datetime.utcnow() - datetime.fromisoformat(ticket['criado_em'])).seconds//60} minutos`", inline=True)
+        log.add_field(name="⏰ Duração", value=f"`{(datetime.now(GMT_MINUS_3) - datetime.fromisoformat(ticket['criado_em'])).seconds//60} minutos`", inline=True)
         await self.send_log(interaction.guild, log)
 
         embed_fechado = discord.Embed(
@@ -1226,14 +1229,14 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             return
 
         # Calcular horário de fim
-        end_datetime = datetime.utcnow() + timedelta(seconds=total_seconds)
+        end_datetime = datetime.now(GMT_MINUS_3) + timedelta(seconds=total_seconds)
         
         # Criar embed do giveaway
         embed = discord.Embed(
             title="🎉 **GIVEAWAY** 🎉",
             description=f"**{self.giveaway_name.value}**",
             color=0xFFD700,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(GMT_MINUS_3)
         )
         
         embed.add_field(
@@ -1399,7 +1402,7 @@ async def calcular(ctx, valor: str, tier: str = None):
                 title="**CALCULADORA DE ROBUX**",
                 description=f"✨ **Cálculo para R$ {valor_reais:,.2f}** ✨\n\n🏆 **Tier:** {tier_name} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'}){' (Preview)' if is_preview else ''}",
                 color=0x5865F2,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(GMT_MINUS_3)
             )
             
             embed.add_field(
@@ -1430,7 +1433,7 @@ async def calcular(ctx, valor: str, tier: str = None):
                 title="CALCULADORA DE ROBUX",
                 description=f"✨ **Cálculo para {robux_liquidos:,} Robux** ✨\n\n🏆 **Tier:** {tier_name} ({'Sem desconto' if discount == 0 else f'{discount*100:.0f}% de desconto'}){' (Preview)' if is_preview else ''}",
                 color=0x00ff00,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(GMT_MINUS_3)
             )
             
             embed.add_field(
@@ -1933,7 +1936,7 @@ async def claim_giveaway(ctx, message_id: str):
         
         # Marcar como reclamado
         giveaway["claimed"] = True
-        giveaway["claimed_at"] = datetime.utcnow().isoformat()
+        giveaway["claimed_at"] = datetime.now(GMT_MINUS_3).isoformat()
         giveaway["claimed_by"] = ctx.author.id
         save_json(GIVEAWAYS_FILE, data)
         
@@ -1993,7 +1996,7 @@ async def check_expired_giveaways():
         try:
             # Carregar dados dos giveaways
             data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
-            current_time = datetime.utcnow()
+            current_time = datetime.now(GMT_MINUS_3)
             
             for giveaway_id, giveaway in data["giveaways"].items():
                 if giveaway.get("active", True):
@@ -2027,7 +2030,7 @@ async def finish_giveaway(giveaway_id, giveaway, data):
         if not participants:
             # Nenhum participante - cancelar giveaway
             giveaway["active"] = False
-            giveaway["finished_at"] = datetime.utcnow().isoformat()
+            giveaway["finished_at"] = datetime.now(GMT_MINUS_3).isoformat()
             giveaway["status"] = "cancelled_no_participants"
             save_json(GIVEAWAYS_FILE, data)
             
@@ -2059,9 +2062,9 @@ async def finish_giveaway(giveaway_id, giveaway, data):
         
         # Marcar giveaway como finalizado
         giveaway["active"] = False
-        giveaway["finished_at"] = datetime.utcnow().isoformat()
+        giveaway["finished_at"] = datetime.now(GMT_MINUS_3).isoformat()
         giveaway["winner"] = winner_id
-        giveaway["claim_deadline"] = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        giveaway["claim_deadline"] = (datetime.now(GMT_MINUS_3) + timedelta(hours=24)).isoformat()
         giveaway["status"] = "finished"
         giveaway["claimed"] = False
         save_json(GIVEAWAYS_FILE, data)
@@ -2102,7 +2105,7 @@ async def finish_giveaway(giveaway_id, giveaway, data):
                     title="🎉 **GIVEAWAY FINALIZADO** 🎉",
                     description=f"**Parabéns {winner_mention}!**",
                     color=0xFFD700,
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(GMT_MINUS_3)
                 )
                 
                 embed_winner.add_field(
@@ -2149,7 +2152,7 @@ async def reroll_giveaway(giveaway_id, giveaway, data):
                         title="🎉 **GIVEAWAY - REROLL CANCELADO** 🎉",
                         description=f"**{giveaway['name']}**",
                         color=discord.Color.red(),
-                        timestamp=datetime.utcnow()
+                        timestamp=datetime.now(GMT_MINUS_3)
                     )
                     
                     embed_reroll_cancelled.add_field(
@@ -2185,7 +2188,7 @@ async def reroll_giveaway(giveaway_id, giveaway, data):
         
         # Atualizar dados do giveaway
         giveaway["winner"] = new_winner_id
-        giveaway["claim_deadline"] = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        giveaway["claim_deadline"] = (datetime.now(GMT_MINUS_3) + timedelta(hours=24)).isoformat()
         giveaway["claimed"] = False
         giveaway["reroll_count"] = giveaway.get("reroll_count", 0) + 1
         save_json(GIVEAWAYS_FILE, data)
@@ -2200,7 +2203,7 @@ async def reroll_giveaway(giveaway_id, giveaway, data):
                     title="🔄 **GIVEAWAY - PRÊMIO REROLADO** 🔄",
                     description=f"**{giveaway['name']}**",
                     color=0xFF6B35,
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(GMT_MINUS_3)
                 )
                 
                 embed_reroll.add_field(
@@ -2289,7 +2292,7 @@ async def auto_update_giveaway_entries():
                         # Only update if entries changed
                         if new_entries != old_entries:
                             participant_data["entries"] = new_entries
-                            participant_data["last_update"] = datetime.utcnow().isoformat()
+                            participant_data["last_update"] = datetime.now(GMT_MINUS_3).isoformat()
                             updated_count += 1
                             
                             print(f"✅ Updated {member.name}#{member.discriminator}: {old_entries} → {new_entries} entries")
@@ -2380,7 +2383,7 @@ async def on_interaction(interaction: discord.Interaction):
             # Calcular entries baseado em roles
             total_entries = get_giveaway_entries(interaction.user)
             user_id = str(interaction.user.id)
-            current_time = datetime.utcnow()
+            current_time = datetime.now(GMT_MINUS_3)
             
             # Verificar se usuário já participa
             if user_id in giveaway["participants"]:
