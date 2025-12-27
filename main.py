@@ -143,9 +143,9 @@ def calculate_invite_bonus(member: discord.Member, giveaway_data: dict) -> int:
 
         for invite_code, invite_data in user_invites.items():
             # Check if invite was created during giveaway period
-            invite_created = datetime.fromisoformat(invite_data["created_at"])
-            giveaway_start = datetime.fromisoformat(giveaway_data["created_at"])
-            giveaway_end = datetime.fromisoformat(giveaway_data["end_time"])
+            invite_created = datetime.fromisoformat(invite_data["created_at"]).replace(tzinfo=GMT_MINUS_3)
+            giveaway_start = datetime.fromisoformat(giveaway_data["created_at"]).replace(tzinfo=GMT_MINUS_3)
+            giveaway_end = datetime.fromisoformat(giveaway_data["end_time"]).replace(tzinfo=GMT_MINUS_3)
 
             if giveaway_start <= invite_created <= giveaway_end:
                 # Count valid uses
@@ -1170,7 +1170,7 @@ class TicketButtons(discord.ui.View):
             log.add_field(name="💎 Gamepass", value=f"`{gamepass}`", inline=True)
         
         log.add_field(name="📌 Status", value="🔵 **FECHADO**", inline=True)
-        log.add_field(name="⏰ Duração", value=f"`{(datetime.now(GMT_MINUS_3) - datetime.fromisoformat(ticket['criado_em'])).seconds//60} minutos`", inline=True)
+        log.add_field(name="⏰ Duração", value=f"`{(datetime.now(GMT_MINUS_3) - datetime.fromisoformat(ticket['criado_em']).replace(tzinfo=GMT_MINUS_3)).seconds//60} minutos`", inline=True)
         await self.send_log(interaction.guild, log)
 
         embed_fechado = discord.Embed(
@@ -2138,14 +2138,14 @@ async def check_expired_giveaways():
             for giveaway_id, giveaway in data["giveaways"].items():
                 if giveaway.get("active", True):
                     # Verificar se o giveaway expirou
-                    end_time = datetime.fromisoformat(giveaway["end_time"])
+                    end_time = datetime.fromisoformat(giveaway["end_time"]).replace(tzinfo=GMT_MINUS_3)
                     if current_time >= end_time:
                         # Finalizar giveaway
                         await finish_giveaway(giveaway_id, giveaway, data)
                 else:
                     # Verificar se o prazo de claim expirou
                     if "claim_deadline" in giveaway and giveaway.get("status") == "finished":
-                        claim_deadline = datetime.fromisoformat(giveaway["claim_deadline"])
+                        claim_deadline = datetime.fromisoformat(giveaway["claim_deadline"]).replace(tzinfo=GMT_MINUS_3)
                         if current_time >= claim_deadline and not giveaway.get("claimed", False):
                             # Reroll automático
                             await reroll_giveaway(giveaway_id, giveaway, data)
@@ -2527,7 +2527,7 @@ async def on_interaction(interaction: discord.Interaction):
                 # Check cooldown (5 minutes)
                 last_update = giveaway["participants"][user_id].get("last_update")
                 if last_update:
-                    last_update_time = datetime.fromisoformat(last_update)
+                    last_update_time = datetime.fromisoformat(last_update).replace(tzinfo=GMT_MINUS_3)
                     cooldown_end = last_update_time + timedelta(minutes=5)
                     if current_time < cooldown_end:
                         remaining_time = cooldown_end - current_time
@@ -2656,7 +2656,7 @@ async def on_member_join(member: discord.Member):
                 for inviter_id, user_invites in giveaway["invite_tracking"].items():
                     for invite_code, invite_data in user_invites.items():
                         # Check if this invite could have been used (we'll assume recent joins are from tracked invites)
-                        invite_created = datetime.fromisoformat(invite_data["created_at"])
+                        invite_created = datetime.fromisoformat(invite_data["created_at"]).replace(tzinfo=GMT_MINUS_3)
                         time_since_invite = current_time - invite_created
 
                         # If member joined within reasonable time after invite creation
