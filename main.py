@@ -46,6 +46,15 @@ TIERS = [
     {"name": "Elite", "min_spent": 250.0, "discount": 0.10},
 ]
 
+# Sistema de Bonus de Entries para Giveaways
+GIVEAWAY_ROLE_BONUSES = {
+    # Role ID: bonus entries
+    1449319423780458597: 5,  # STAFF_ROLE_ID - Staff gets +5 entries
+    1449248434317164608: 2,  # CLIENT_ROLE_ID - Clients get +2 entries
+    # Add more role bonuses here as needed
+    # Example: 123456789012345678: 3,  # Some role gets +3 entries
+}
+
 # ======================
 # FUNÇÕES DE CÁLCULO
 # ======================
@@ -86,6 +95,33 @@ def get_tier_by_name(name):
         if tier["name"].lower() == name.lower():
             return tier
     return None
+
+def get_giveaway_entries(member: discord.Member) -> int:
+    """Calcula o número total de entries para um usuário baseado em seus roles."""
+    base_entries = 1  # Everyone gets 1 base entry
+    bonus_entries = 0
+    
+    # Check each role the user has
+    for role in member.roles:
+        if role.id in GIVEAWAY_ROLE_BONUSES:
+            bonus_entries += GIVEAWAY_ROLE_BONUSES[role.id]
+    
+    return base_entries + bonus_entries
+
+
+def select_weighted_winner(participants: dict) -> str:
+    """Seleciona um vencedor baseado no número de entries (weighted random)."""
+    # Create weighted list
+    weighted_list = []
+    for user_id, data in participants.items():
+        entries = data.get("entries", 1)
+        weighted_list.extend([user_id] * entries)
+    
+    if not weighted_list:
+        return None
+    
+    return random.choice(weighted_list)
+
 
 # ======================
 # MODAIS PARA COMPRAS (MANTIDO)
@@ -1219,8 +1255,20 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         )
         
         embed.add_field(
+            name="🎯 **Total Entries**",
+            value="`0`",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🎯 **Sistema de Entries**",
+            value="• **Base:** 1 entry\n• **Clientes:** +2 entries\n• **Staff:** +5 entries\n• **Atualização:** A cada 5min",
+            inline=False
+        )
+        
+        embed.add_field(
             name="🎯 **Como participar**",
-            value="Clique no botão abaixo para entrar no giveaway!",
+            value="Clique no botão abaixo para entrar!\nVocê pode atualizar suas entries a cada 5 minutos.",
             inline=False
         )
         
@@ -1856,12 +1904,406 @@ async def create_giveaway(interaction: discord.Interaction, channel: discord.Tex
     await interaction.response.send_modal(modal)
 
 
+@bot.hybrid_command(name="claimgiveaway", description="Marca um giveaway como reclamado (staff apenas)")
+@app_commands.describe(message_id="ID da mensagem do giveaway")
+async def claim_giveaway(ctx, message_id: str):
+    """Marca um giveaway como reclamado por um membro da staff."""
+    # Verificar permissões (apenas staff)
+    if STAFF_ROLE_ID not in [r.id for r in ctx.author.roles]:
+        await ctx.send("❌ **Acesso restrito!**\nApenas membros da equipe podem usar este comando.", ephemeral=True)
+        return
+    
+    try:
+        # Carregar dados dos giveaways
+        data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+        
+        if message_id not in data["giveaways"]:
+            await ctx.send("❌ **Giveaway não encontrado!**\nVerifique o ID da mensagem.", ephemeral=True)
+            return
+        
+        giveaway = data["giveaways"][message_id]
+        
+        if giveaway.get("active", True):
+            await ctx.send("❌ **Este giveaway ainda está ativo!**\nAguarde o fim do giveaway para marcar como reclamado.", ephemeral=True)
+            return
+        
+        if giveaway.get("claimed", False):
+            await ctx.send("⚠️ **Este giveaway já foi marcado como reclamado!**", ephemeral=True)
+            return
+        
+        # Marcar como reclamado
+        giveaway["claimed"] = True
+        giveaway["claimed_at"] = datetime.utcnow().isoformat()
+        giveaway["claimed_by"] = ctx.author.id
+        save_json(GIVEAWAYS_FILE, data)
+        
+        # Tentar atualizar embed
+        try:
+            channel = bot.get_channel(giveaway["channel_id"])
+            if channel:
+                message = await channel.fetch_message(int(message_id))
+                if message:
+                    embed = message.embeds[0]
+                    
+                    # Adicionar campo de reclamado
+                    embed.add_field(
+                        name="✅ **PRÊMIO RECLAMADO**",
+                        value=f"Reclamado por {ctx.author.mention}",
+                        inline=False
+                    )
+                    
+                    await message.edit(embed=embed)
+        except Exception as e:
+            print(f"Erro ao atualizar embed do giveaway reclamado: {str(e)}")
+        
+        await ctx.send(f"✅ **Giveaway marcado como reclamado!**\nPrêmio: {giveaway['prize']}\nVencedor: <@{giveaway['winner']}>", ephemeral=True)
+        
+    except Exception as e:
+        await ctx.send(f"❌ **Erro ao processar comando:** {str(e)}", ephemeral=True)
+
+
 @bot.hybrid_command(name="sync", description="Sincroniza os comandos slash (apenas dono)")
 @commands.is_owner()
 async def sync(ctx):
     """Sincroniza os comandos slash com o Discord."""
     await bot.tree.sync()
     await ctx.send("✅ Comandos slash sincronizados com sucesso!", ephemeral=True)
+
+
+# ======================
+# SISTEMA DE VERIFICAÇÃO DE GIVEAWAYS
+# ======================
+
+async def check_expired_giveaways():
+    """Verifica giveaways expirados a cada 60 segundos e finaliza-os."""
+    await bot.wait_until_ready()
+    
+    while not bot.is_closed():
+        try:
+            # Carregar dados dos giveaways
+            data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+            current_time = datetime.utcnow()
+            
+            for giveaway_id, giveaway in data["giveaways"].items():
+                if giveaway.get("active", True):
+                    # Verificar se o giveaway expirou
+                    end_time = datetime.fromisoformat(giveaway["end_time"])
+                    if current_time >= end_time:
+                        # Finalizar giveaway
+                        await finish_giveaway(giveaway_id, giveaway, data)
+                else:
+                    # Verificar se o prazo de claim expirou
+                    if "claim_deadline" in giveaway and giveaway.get("status") == "finished":
+                        claim_deadline = datetime.fromisoformat(giveaway["claim_deadline"])
+                        if current_time >= claim_deadline and not giveaway.get("claimed", False):
+                            # Reroll automático
+                            await reroll_giveaway(giveaway_id, giveaway, data)
+            
+            # Aguardar 60 segundos antes da próxima verificação
+            await asyncio.sleep(60)
+            
+        except Exception as e:
+            print(f"❌ Erro na verificação de giveaways: {str(e)}")
+            await asyncio.sleep(60)
+
+
+async def finish_giveaway(giveaway_id, giveaway, data):
+    """Finaliza um giveaway selecionando um vencedor."""
+    try:
+        # Obter participantes
+        participants = giveaway["participants"]
+        
+        if not participants:
+            # Nenhum participante - cancelar giveaway
+            giveaway["active"] = False
+            giveaway["finished_at"] = datetime.utcnow().isoformat()
+            giveaway["status"] = "cancelled_no_participants"
+            save_json(GIVEAWAYS_FILE, data)
+            
+            # Tentar enviar mensagem de cancelamento
+            try:
+                channel = bot.get_channel(giveaway["channel_id"])
+                if channel:
+                    message = await channel.fetch_message(int(giveaway_id))
+                    if message:
+                        embed = message.embeds[0]
+                        embed.color = discord.Color.red()
+                        embed.add_field(
+                            name="❌ **GIVEAWAY CANCELADO**",
+                            value="Nenhum participante se inscreveu neste giveaway.",
+                            inline=False
+                        )
+                        await message.edit(embed=embed, view=None)
+            except Exception as e:
+                print(f"Erro ao atualizar mensagem cancelada: {str(e)}")
+            
+            return
+        
+        # Selecionar vencedor baseado em entries (weighted random)
+        winner_id = select_weighted_winner(participants)
+        if winner_id is None:
+            # Fallback to simple random if something goes wrong
+            winner_id = random.choice(list(participants.keys()))
+        winner_user = bot.get_user(int(winner_id))
+        
+        # Marcar giveaway como finalizado
+        giveaway["active"] = False
+        giveaway["finished_at"] = datetime.utcnow().isoformat()
+        giveaway["winner"] = winner_id
+        giveaway["claim_deadline"] = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        giveaway["status"] = "finished"
+        giveaway["claimed"] = False
+        save_json(GIVEAWAYS_FILE, data)
+        
+        # Atualizar embed do giveaway
+        try:
+            channel = bot.get_channel(giveaway["channel_id"])
+            if channel:
+                message = await channel.fetch_message(int(giveaway_id))
+                if message:
+                    embed = message.embeds[0]
+                    embed.color = discord.Color.green()
+                    
+                    # Atualizar campos
+                    for i, field in enumerate(embed.fields):
+                        if field.name == "⏰ **Termina em**":
+                            embed.set_field_at(i, name="⏰ **Terminou**", value=f"<t:{int(datetime.fromisoformat(giveaway['finished_at']).timestamp())}:R>", inline=True)
+                        elif field.name == "👥 **Participantes**":
+                            embed.set_field_at(i, name="👥 **Participantes**", value=f"`{len(participants)}`", inline=True)
+                    
+                    embed.add_field(
+                        name="🏆 **VENCEDOR**",
+                        value=f"{winner_user.mention if winner_user else f'<@{winner_id}>'}",
+                        inline=False
+                    )
+                    
+                    await message.edit(embed=embed, view=None)
+        except Exception as e:
+            print(f"Erro ao atualizar embed do giveaway: {str(e)}")
+        
+        # Enviar mensagem de anúncio do vencedor
+        try:
+            channel = bot.get_channel(giveaway["channel_id"])
+            if channel:
+                winner_mention = winner_user.mention if winner_user else f"<@{winner_id}>"
+                
+                embed_winner = discord.Embed(
+                    title="🎉 **GIVEAWAY FINALIZADO** 🎉",
+                    description=f"**Parabéns {winner_mention}!**",
+                    color=0xFFD700,
+                    timestamp=datetime.utcnow()
+                )
+                
+                embed_winner.add_field(
+                    name="🏆 **Prêmio Ganho**",
+                    value=giveaway["prize"],
+                    inline=False
+                )
+                
+                embed_winner.add_field(
+                    name="⏰ **Como Reclamar**",
+                    value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
+                    
+Se não reclamar dentro do prazo, o prêmio será sorteado novamente.""",
+                    inline=False
+                )
+                
+                embed_winner.set_footer(text="Boa sorte na próxima! 🍀")
+                
+                await channel.send(embed=embed_winner)
+                
+        except Exception as e:
+            print(f"Erro ao enviar anúncio do vencedor: {str(e)}")
+            
+    except Exception as e:
+        print(f"❌ Erro ao finalizar giveaway {giveaway_id}: {str(e)}")
+
+
+async def reroll_giveaway(giveaway_id, giveaway, data):
+    """Faz reroll de um giveaway selecionando um novo vencedor."""
+    try:
+        # Obter participantes
+        participants = giveaway["participants"]
+        
+        if len(participants) <= 1:
+            # Apenas 1 participante ou menos - não há como rerollar
+            giveaway["status"] = "cancelled_insufficient_participants"
+            save_json(GIVEAWAYS_FILE, data)
+            
+            # Tentar enviar mensagem de cancelamento
+            try:
+                channel = bot.get_channel(giveaway["channel_id"])
+                if channel:
+                    embed_reroll_cancelled = discord.Embed(
+                        title="🎉 **GIVEAWAY - REROLL CANCELADO** 🎉",
+                        description=f"**{giveaway['name']}**",
+                        color=discord.Color.red(),
+                        timestamp=datetime.utcnow()
+                    )
+                    
+                    embed_reroll_cancelled.add_field(
+                        name="🏆 **Prêmio**",
+                        value=giveaway["prize"],
+                        inline=False
+                    )
+                    
+                    embed_reroll_cancelled.add_field(
+                        name="❌ **Motivo**",
+                        value="Poucos participantes para reroll automático.",
+                        inline=False
+                    )
+                    
+                    embed_reroll_cancelled.set_footer(text="Giveaway finalizado sem vencedor.")
+                    
+                    await channel.send(embed=embed_reroll_cancelled)
+            except Exception as e:
+                print(f"Erro ao enviar mensagem de reroll cancelado: {str(e)}")
+            
+            return
+        
+        # Remover o vencedor anterior da lista de participantes
+        previous_winner = giveaway.get("winner")
+        available_participants = {uid: data for uid, data in participants.items() if uid != previous_winner}
+        
+        # Selecionar novo vencedor baseado em entries (weighted random)
+        new_winner_id = select_weighted_winner(available_participants)
+        if new_winner_id is None:
+            # Fallback to simple random if something goes wrong
+            new_winner_id = random.choice(list(available_participants.keys()))
+        new_winner_user = bot.get_user(int(new_winner_id))
+        
+        # Atualizar dados do giveaway
+        giveaway["winner"] = new_winner_id
+        giveaway["claim_deadline"] = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        giveaway["claimed"] = False
+        giveaway["reroll_count"] = giveaway.get("reroll_count", 0) + 1
+        save_json(GIVEAWAYS_FILE, data)
+        
+        # Enviar mensagem de reroll
+        try:
+            channel = bot.get_channel(giveaway["channel_id"])
+            if channel:
+                new_winner_mention = new_winner_user.mention if new_winner_user else f"<@{new_winner_id}>"
+                
+                embed_reroll = discord.Embed(
+                    title="🔄 **GIVEAWAY - PRÊMIO REROLADO** 🔄",
+                    description=f"**{giveaway['name']}**",
+                    color=0xFF6B35,
+                    timestamp=datetime.utcnow()
+                )
+                
+                embed_reroll.add_field(
+                    name="🏆 **Prêmio**",
+                    value=giveaway["prize"],
+                    inline=False
+                )
+                
+                embed_reroll.add_field(
+                    name="🎉 **Novo Vencedor**",
+                    value=f"{new_winner_mention}",
+                    inline=False
+                )
+                
+                embed_reroll.add_field(
+                    name="⏰ **Como Reclamar**",
+                    value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
+                    
+Se não reclamar dentro do prazo, o prêmio será sorteado novamente.""",
+                    inline=False
+                )
+                
+                embed_reroll.add_field(
+                    name="📊 **Rerolls**",
+                    value=f"`{giveaway['reroll_count']}`",
+                    inline=True
+                )
+                
+                embed_reroll.set_footer(text="Boa sorte na próxima! 🍀")
+                
+                await channel.send(embed=embed_reroll)
+                
+        except Exception as e:
+            print(f"Erro ao enviar mensagem de reroll: {str(e)}")
+            
+    except Exception as e:
+        print(f"❌ Erro ao fazer reroll do giveaway {giveaway_id}: {str(e)}")
+
+
+async def auto_update_giveaway_entries():
+    """Atualiza automaticamente as entries dos participantes a cada hora, processando lentamente."""
+    await bot.wait_until_ready()
+    
+    while not bot.is_closed():
+        try:
+            # Aguardar 1 hora
+            await asyncio.sleep(3600)  # 1 hour = 3600 seconds
+            
+            print("🔄 Iniciando auto-update de entries dos giveaways...")
+            
+            data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+            updated_count = 0
+            
+            for giveaway_id, giveaway in data["giveaways"].items():
+                if not giveaway.get("active", True):
+                    continue  # Skip inactive giveaways
+                
+                participants = giveaway["participants"]
+                if not participants:
+                    continue
+                
+                # Process each participant slowly
+                for user_id, participant_data in participants.items():
+                    try:
+                        # Get member object
+                        guild = None
+                        member = None
+                        
+                        # Find the guild and member
+                        for g in bot.guilds:
+                            try:
+                                member = g.get_member(int(user_id))
+                                if member:
+                                    guild = g
+                                    break
+                            except:
+                                continue
+                        
+                        if not member:
+                            continue  # Skip if member not found
+                        
+                        # Calculate new entries
+                        new_entries = get_giveaway_entries(member)
+                        old_entries = participant_data["entries"]
+                        
+                        # Only update if entries changed
+                        if new_entries != old_entries:
+                            participant_data["entries"] = new_entries
+                            participant_data["last_update"] = datetime.utcnow().isoformat()
+                            updated_count += 1
+                            
+                            print(f"✅ Updated {member.name}#{member.discriminator}: {old_entries} → {new_entries} entries")
+                        
+                        # Small delay between each user to avoid rate limits
+                        await asyncio.sleep(0.5)  # 500ms delay
+                        
+                    except Exception as e:
+                        print(f"❌ Error updating user {user_id}: {str(e)}")
+                        continue
+                
+                # Save after processing each giveaway
+                save_json(GIVEAWAYS_FILE, data)
+                
+                # Longer delay between giveaways
+                await asyncio.sleep(2)  # 2 second delay between giveaways
+            
+            if updated_count > 0:
+                print(f"✅ Auto-update concluído! {updated_count} entries atualizadas.")
+            else:
+                print("✅ Auto-update concluído! Nenhuma atualização necessária.")
+            
+        except Exception as e:
+            print(f"❌ Erro no auto-update de entries: {str(e)}")
+            await asyncio.sleep(3600)  # Wait another hour if error
 
 
 # ======================
@@ -1889,6 +2331,12 @@ async def on_ready():
         ),
         status=discord.Status.online
     )
+    
+    # Iniciar verificação automática de giveaways
+    bot.loop.create_task(check_expired_giveaways())
+    bot.loop.create_task(auto_update_giveaway_entries())
+    print("✅ Sistema de verificação de giveaways iniciado!")
+    print("✅ Sistema de auto-update de entries iniciado!")
 
 
 @bot.event
@@ -1918,36 +2366,75 @@ async def on_interaction(interaction: discord.Interaction):
                 )
                 return
             
-            # Verificar se usuário já participa
+            # Calcular entries baseado em roles
+            total_entries = get_giveaway_entries(interaction.user)
             user_id = str(interaction.user.id)
+            current_time = datetime.utcnow()
+            
+            # Verificar se usuário já participa
             if user_id in giveaway["participants"]:
+                # Check cooldown (5 minutes)
+                last_update = giveaway["participants"][user_id].get("last_update")
+                if last_update:
+                    last_update_time = datetime.fromisoformat(last_update)
+                    cooldown_end = last_update_time + timedelta(minutes=5)
+                    if current_time < cooldown_end:
+                        remaining_time = cooldown_end - current_time
+                        minutes_left = int(remaining_time.total_seconds() / 60)
+                        seconds_left = int(remaining_time.total_seconds() % 60)
+                        await interaction.response.send_message(
+                            f"⏰ **Cooldown ativo!**\nVocê pode atualizar suas entries novamente em `{minutes_left}m {seconds_left}s`.",
+                            ephemeral=True
+                        )
+                        return
+                
+                # Update entries
+                old_entries = giveaway["participants"][user_id]["entries"]
+                giveaway["participants"][user_id]["entries"] = total_entries
+                giveaway["participants"][user_id]["last_update"] = current_time.isoformat()
+                
+                # Atualizar embed com novo total de entries
+                embed = interaction.message.embeds[0]
+                total_entries_sum = sum(p["entries"] for p in giveaway["participants"].values())
+                
+                for i, field in enumerate(embed.fields):
+                    if field.name == "🎯 **Total Entries**":
+                        embed.set_field_at(i, name="🎯 **Total Entries**", value=f"`{total_entries_sum}`", inline=True)
+                        break
+                
+                await interaction.message.edit(embed=embed)
+                save_json(GIVEAWAYS_FILE, data)
+                
                 await interaction.response.send_message(
-                    "⚠️ **Você já está participando deste giveaway!**",
+                    f"✅ **Entries atualizadas!**\n🎯 **Antes:** {old_entries} entries\n🎯 **Agora:** {total_entries} entries\n🏆 **Prêmio:** {giveaway['prize']}",
                     ephemeral=True
                 )
                 return
             
-            # Adicionar participante
+            # Adicionar novo participante
             giveaway["participants"][user_id] = {
-                "entries": 1,
-                "joined_at": datetime.utcnow().isoformat()
+                "entries": total_entries,
+                "joined_at": current_time.isoformat(),
+                "last_update": current_time.isoformat()
             }
             
             # Atualizar contador no embed
             embed = interaction.message.embeds[0]
             participant_count = len(giveaway["participants"])
+            total_entries = sum(p["entries"] for p in giveaway["participants"].values())
             
-            # Encontrar e atualizar campo de participantes
+            # Encontrar e atualizar campos
             for i, field in enumerate(embed.fields):
                 if field.name == "👥 **Participantes**":
                     embed.set_field_at(i, name="👥 **Participantes**", value=f"`{participant_count}`", inline=True)
-                    break
+                elif field.name == "🎯 **Total Entries**":
+                    embed.set_field_at(i, name="🎯 **Total Entries**", value=f"`{total_entries}`", inline=True)
             
             await interaction.message.edit(embed=embed)
             save_json(GIVEAWAYS_FILE, data)
             
             await interaction.response.send_message(
-                f"✅ **Você entrou no giveaway!**\n🎉 **{giveaway['name']}**\n🏆 **Prêmio:** {giveaway['prize']}",
+                f"✅ **Você entrou no giveaway!**\n🎉 **{giveaway['name']}**\n🎯 **Suas entries:** {total_entries}\n🏆 **Prêmio:** {giveaway['prize']}",
                 ephemeral=True
             )
 
