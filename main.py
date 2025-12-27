@@ -1332,8 +1332,8 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         
         # Criar embed do giveaway
         embed = discord.Embed(
-            title="🎉 **GIVEAWAY** 🎉",
-            description=f"**{self.giveaway_name.value}**",
+            title=f"🎉 **{self.giveaway_name.value}** 🎉",
+            description="",
             color=0xFFD700,
             timestamp=datetime.now(GMT_MINUS_3)
         )
@@ -2237,7 +2237,7 @@ async def finish_giveaway(giveaway_id, giveaway, data):
             channel = bot.get_channel(giveaway["channel_id"])
             if channel:
                 winner_mention = winner_user.mention if winner_user else f"<@{winner_id}>"
-                
+                content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>\n\n**📋 DETALHES DA COMPRA:**\n• **Tipo:** {tipo_compra}\n• **Quantidade:** {quantidade:,} Robux",
                 embed_winner = discord.Embed(
                     title="🎉 **GIVEAWAY FINALIZADO** 🎉",
                     description=f"**Parabéns {winner_mention}!**",
@@ -2261,7 +2261,7 @@ Se não reclamar dentro do prazo, o prêmio será sorteado novamente.""",
                 
                 embed_winner.set_footer(text="Boa sorte na próxima! 🍀")
                 
-                await channel.send(embed=embed_winner)
+                await channel.send(content=content, embed=embed_winner)
                 
         except Exception as e:
             print(f"Erro ao enviar anúncio do vencedor: {str(e)}")
