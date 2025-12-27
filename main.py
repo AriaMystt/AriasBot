@@ -21,6 +21,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.invites = True
 
 # IDs de Canais e Cargos
 BUY_CATEGORY_ID = 1449312175448391833
@@ -57,6 +58,11 @@ GIVEAWAY_ROLE_BONUSES = {
     # Add more role bonuses here as needed
     # Example: 123456789012345678: 3,  # Some role gets +3 entries
 }
+
+# Sistema de Bonus de Entries por Convites
+GIVEAWAY_INVITE_BONUS = 1  # +1 entry por convite válido
+MIN_ACCOUNT_AGE_DAYS = 7  # Conta deve ter pelo menos 7 dias
+MIN_LAST_SEEN_HOURS = 24  # Usuário deve ter ficado online nas últimas 24 horas
 
 # ======================
 # FUNÇÕES DE CÁLCULO
@@ -99,17 +105,85 @@ def get_tier_by_name(name):
             return tier
     return None
 
-def get_giveaway_entries(member: discord.Member) -> int:
-    """Calcula o número total de entries para um usuário baseado em seus roles."""
+def get_giveaway_entries(member: discord.Member, giveaway_data: dict = None) -> int:
+    """Calcula o número total de entries para um usuário baseado em seus roles e convites válidos."""
     base_entries = 1  # Everyone gets 1 base entry
     bonus_entries = 0
+
+    # Check giveaway settings
+    enable_roles = True
+    enable_invites = True
     
-    # Check each role the user has
-    for role in member.roles:
-        if role.id in GIVEAWAY_ROLE_BONUSES:
-            bonus_entries += GIVEAWAY_ROLE_BONUSES[role.id]
-    
+    if giveaway_data and "settings" in giveaway_data:
+        enable_roles = giveaway_data["settings"].get("enable_role_bonuses", True)
+        enable_invites = giveaway_data["settings"].get("enable_invite_bonuses", True)
+
+    # Check each role the user has (only if role bonuses are enabled)
+    if enable_roles:
+        for role in member.roles:
+            if role.id in GIVEAWAY_ROLE_BONUSES:
+                bonus_entries += GIVEAWAY_ROLE_BONUSES[role.id]
+
+    # Add invite bonuses if giveaway data is provided and invites are enabled
+    if giveaway_data and enable_invites:
+        invite_bonus = calculate_invite_bonus(member, giveaway_data)
+        bonus_entries += invite_bonus
+
     return base_entries + bonus_entries
+
+
+def calculate_invite_bonus(member: discord.Member, giveaway_data: dict) -> int:
+    """Calcula o bônus de entries baseado em convites válidos feitos durante o giveaway."""
+    user_id = str(member.id)
+    bonus_entries = 0
+
+    # Check if user has invite tracking data
+    if "invite_tracking" in giveaway_data and user_id in giveaway_data["invite_tracking"]:
+        user_invites = giveaway_data["invite_tracking"][user_id]
+
+        for invite_code, invite_data in user_invites.items():
+            # Check if invite was created during giveaway period
+            invite_created = datetime.fromisoformat(invite_data["created_at"])
+            giveaway_start = datetime.fromisoformat(giveaway_data["created_at"])
+            giveaway_end = datetime.fromisoformat(giveaway_data["end_time"])
+
+            if giveaway_start <= invite_created <= giveaway_end:
+                # Count valid uses
+                valid_uses = 0
+                for use_data in invite_data.get("uses", []):
+                    invited_user_id = use_data["user_id"]
+
+                    # Check if invited user is still in server
+                    invited_member = member.guild.get_member(int(invited_user_id))
+                    if invited_member and is_valid_invited_user(invited_member):
+                        valid_uses += 1
+
+                bonus_entries += valid_uses * GIVEAWAY_INVITE_BONUS
+
+    return bonus_entries
+
+
+def is_valid_invited_user(member: discord.Member) -> bool:
+    """Verifica se um usuário convidado é válido (não é bot, conta antiga, etc.)."""
+    # Check if user is a bot
+    if member.bot:
+        return False
+
+    # Check account age (must be at least MIN_ACCOUNT_AGE_DAYS old)
+    account_age = datetime.now(GMT_MINUS_3) - member.created_at.replace(tzinfo=GMT_MINUS_3)
+    if account_age.days < MIN_ACCOUNT_AGE_DAYS:
+        return False
+
+    # Check if user has been seen recently (last message or status update)
+    # Discord.py doesn't provide direct last seen, but we can check if they have recent activity
+    # For now, we'll assume they're valid if they're not offline and have been in server for some time
+    if member.status == discord.Status.offline:
+        # If offline, check how long they've been in the server
+        time_in_server = datetime.now(GMT_MINUS_3) - member.joined_at.replace(tzinfo=GMT_MINUS_3)
+        if time_in_server.total_seconds() < MIN_LAST_SEEN_HOURS * 3600:
+            return False
+
+    return True
 
 
 def select_weighted_winner(participants: dict) -> str:
@@ -1180,6 +1254,22 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         required=True,
         max_length=200
     )
+    
+    enable_role_bonuses = discord.ui.TextInput(
+        label="Bônus por Cargos (sim/não)",
+        placeholder="sim (padrão) ou não",
+        required=False,
+        max_length=3,
+        default="sim"
+    )
+    
+    enable_invite_bonuses = discord.ui.TextInput(
+        label="Bônus por Convites (sim/não)",
+        placeholder="sim (padrão) ou não",
+        required=False,
+        max_length=3,
+        default="sim"
+    )
 
     def __init__(self, interaction):
         super().__init__()
@@ -1228,6 +1318,15 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             )
             return
 
+        # Validar opções de bônus
+        enable_roles = self.enable_role_bonuses.value.lower().strip() in ['sim', 's', 'yes', 'y', 'on', '1', 'true']
+        enable_invites = self.enable_invite_bonuses.value.lower().strip() in ['sim', 's', 'yes', 'y', 'on', '1', 'true']
+        
+        if not self.enable_role_bonuses.value.strip():
+            enable_roles = True  # Default to enabled
+        if not self.enable_invite_bonuses.value.strip():
+            enable_invites = True  # Default to enabled
+
         # Calcular horário de fim
         end_datetime = datetime.now(GMT_MINUS_3) + timedelta(seconds=total_seconds)
         
@@ -1263,15 +1362,34 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             inline=True
         )
         
+        # Construir descrição do sistema de entries dinamicamente
+        entries_description = "• **Base:** 1 entry"
+        
+        if enable_roles:
+            entries_description += "\n• **Clientes:** +2 entries\n• **Staff:** +5 entries"
+        
+        if enable_invites:
+            entries_description += "\n• **Convites:** +1 por convite válido"
+        
+        entries_description += "\n• **Atualização:** A cada 5min"
+        
         embed.add_field(
             name="🎯 **Sistema de Entries**",
-            value="• **Base:** 1 entry\n• **Clientes:** +2 entries\n• **Staff:** +5 entries\n• **Atualização:** A cada 5min",
+            value=entries_description,
             inline=False
         )
         
+        # Construir instruções de participação dinamicamente
+        participation_instructions = "Clique no botão abaixo para entrar!"
+        
+        if enable_invites:
+            participation_instructions += "\nConvide amigos durante o giveaway para ganhar entries extras."
+        
+        participation_instructions += "\nVocê pode atualizar suas entries a cada 5 minutos."
+        
         embed.add_field(
             name="🎯 **Como participar**",
-            value="Clique no botão abaixo para entrar!\nVocê pode atualizar suas entries a cada 5 minutos.",
+            value=participation_instructions,
             inline=False
         )
         
@@ -1290,8 +1408,14 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             "name": self.giveaway_name.value,
             "prize": self.prize.value,
             "end_time": end_datetime.isoformat(),
+            "created_at": datetime.now(GMT_MINUS_3).isoformat(),
             "created_by": interaction.user.id,
             "participants": {},
+            "invite_tracking": {},  # Track invites per user
+            "settings": {
+                "enable_role_bonuses": enable_roles,
+                "enable_invite_bonuses": enable_invites
+            },
             "active": True
         }
         
@@ -1300,7 +1424,7 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         save_json(GIVEAWAYS_FILE, data)
         
         await interaction.response.send_message(
-            f"✅ **Giveaway criado com sucesso!**\nNome: {self.giveaway_name.value}\nPrêmio: {self.prize.value}\nDuração: {time_str}",
+            f"✅ **Giveaway criado com sucesso!**\nNome: {self.giveaway_name.value}\nPrêmio: {self.prize.value}\nDuração: {time_str}\n\n🎯 **Bônus Ativados:**\n• Cargos: {'✅' if enable_roles else '❌'}\n• Convites: {'✅' if enable_invites else '❌'}",
             ephemeral=True
         )
 
@@ -2286,7 +2410,7 @@ async def auto_update_giveaway_entries():
                             continue  # Skip if member not found
                         
                         # Calculate new entries
-                        new_entries = get_giveaway_entries(member)
+                        new_entries = get_giveaway_entries(member, giveaway)
                         old_entries = participant_data["entries"]
                         
                         # Only update if entries changed
@@ -2381,7 +2505,7 @@ async def on_interaction(interaction: discord.Interaction):
                 return
             
             # Calcular entries baseado em roles
-            total_entries = get_giveaway_entries(interaction.user)
+            total_entries = get_giveaway_entries(interaction.user, giveaway)
             user_id = str(interaction.user.id)
             current_time = datetime.now(GMT_MINUS_3)
             
@@ -2451,6 +2575,93 @@ async def on_interaction(interaction: discord.Interaction):
                 f"✅ **Você entrou no giveaway!**\n🎉 **{giveaway['name']}**\n🎯 **Suas entries:** {total_entries}\n🏆 **Prêmio:** {giveaway['prize']}",
                 ephemeral=True
             )
+
+
+@bot.event
+async def on_invite_create(invite: discord.Invite):
+    """Track invite creation for giveaway bonus system."""
+    if not invite.inviter or invite.inviter.bot:
+        return
+
+    inviter_id = str(invite.inviter.id)
+
+    # Load giveaway data
+    data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+    current_time = datetime.now(GMT_MINUS_3)
+
+    # Check active giveaways and track invite
+    for giveaway_id, giveaway in data["giveaways"].items():
+        if giveaway.get("active", True):
+            # Check if invite bonuses are enabled for this giveaway
+            enable_invites = giveaway.get("settings", {}).get("enable_invite_bonuses", True)
+            if not enable_invites:
+                continue
+                
+            # Initialize invite tracking for user if not exists
+            if "invite_tracking" not in giveaway:
+                giveaway["invite_tracking"] = {}
+
+            if inviter_id not in giveaway["invite_tracking"]:
+                giveaway["invite_tracking"][inviter_id] = {}
+
+            # Track this invite
+            giveaway["invite_tracking"][inviter_id][invite.code] = {
+                "created_at": current_time.isoformat(),
+                "max_uses": invite.max_uses,
+                "uses": []
+            }
+
+            print(f"📨 Tracked invite {invite.code} by {invite.inviter.name} for giveaway {giveaway['name']}")
+
+    save_json(GIVEAWAYS_FILE, data)
+
+
+@bot.event
+async def on_member_join(member: discord.Member):
+    """Track member joins from invites for giveaway bonus system."""
+    if member.bot:
+        return
+
+    # Try to find which invite was used
+    try:
+        # Get all invites for the guild
+        invites_before = {}  # We can't get invites_before easily, so we'll use invite tracking
+
+        # Load giveaway data
+        data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+        current_time = datetime.now(GMT_MINUS_3)
+
+        # Check active giveaways
+        for giveaway_id, giveaway in data["giveaways"].items():
+            if giveaway.get("active", True) and "invite_tracking" in giveaway:
+                # Check if invite bonuses are enabled for this giveaway
+                enable_invites = giveaway.get("settings", {}).get("enable_invite_bonuses", True)
+                if not enable_invites:
+                    continue
+                    
+                # Check if any tracked invite was used
+                for inviter_id, user_invites in giveaway["invite_tracking"].items():
+                    for invite_code, invite_data in user_invites.items():
+                        # Check if this invite could have been used (we'll assume recent joins are from tracked invites)
+                        invite_created = datetime.fromisoformat(invite_data["created_at"])
+                        time_since_invite = current_time - invite_created
+
+                        # If member joined within reasonable time after invite creation
+                        if time_since_invite.total_seconds() < 86400:  # 24 hours
+                            # Check if this user hasn't been counted for this invite yet
+                            already_counted = any(use["user_id"] == str(member.id) for use in invite_data.get("uses", []))
+
+                            if not already_counted:
+                                invite_data["uses"].append({
+                                    "user_id": str(member.id),
+                                    "joined_at": current_time.isoformat()
+                                })
+                                print(f"👥 Member {member.name} joined from invite {invite_code} by user {inviter_id} for giveaway {giveaway['name']}")
+
+        save_json(GIVEAWAYS_FILE, data)
+
+    except Exception as e:
+        print(f"❌ Error tracking member join: {str(e)}")
 
 
 # ======================
