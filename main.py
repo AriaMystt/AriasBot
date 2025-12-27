@@ -1373,8 +1373,6 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             if enable_invites:
                 entries_description += "\n• **Convites:** +1 por convite válido"
             
-            entries_description += "\n• **Atualização:** A cada 5min"
-            
             embed.add_field(
                 name="🎯 **Sistema de Entries**",
                 value=entries_description,
@@ -1385,13 +1383,13 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             explanation_parts = []
             
             # Explain what entries are
-            explanation_parts.append("🎯 **O que são Entries?** Cada entry representa uma chance de ganhar! Quanto mais entries você tiver, maiores são suas chances de vitória!")
+            explanation_parts.append("🎯 **O que são Entries?** Cada entry representa uma chance! Quanto mais entries você tiver, maiores são suas chances de ganhar!")
             
             # Always explain base entries
             explanation_parts.append("⭐ **Entry Básica:** Todo participante recebe automaticamente 1 entry ao clicar no botão de participação!")
 
             # Always explain updates
-            explanation_parts.append("🔄 **Sistema Automático:** Suas entries são recalculadas automaticamente a cada 5 minutos para refletir convites e mudanças de cargo!")
+            explanation_parts.append("🔄 **Sistema Automático:** Suas entries são recalculadas automaticamente a cada 1 hora para refletir convites e mudanças de cargo. Ou você pode clicar no botão de novo para atualizar manualmente!")
             
             embed.add_field(
                 name="📖 **Como Aumentar suas Chances**",
@@ -2237,7 +2235,7 @@ async def finish_giveaway(giveaway_id, giveaway, data):
             channel = bot.get_channel(giveaway["channel_id"])
             if channel:
                 winner_mention = winner_user.mention if winner_user else f"<@{winner_id}>"
-                content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>\n\n**📋 DETALHES DA COMPRA:**\n• **Tipo:** {tipo_compra}\n• **Quantidade:** {quantidade:,} Robux",
+                content_msg=f"**Parabéns {winner_mention}!**"
                 embed_winner = discord.Embed(
                     title="🎉 **GIVEAWAY FINALIZADO** 🎉",
                     description=f"**Parabéns {winner_mention}!**",
@@ -2261,7 +2259,7 @@ Se não reclamar dentro do prazo, o prêmio será sorteado novamente.""",
                 
                 embed_winner.set_footer(text="Boa sorte na próxima! 🍀")
                 
-                await channel.send(content=content, embed=embed_winner)
+                await channel.send(content=content_msg, embed=embed_winner)
                 
         except Exception as e:
             print(f"Erro ao enviar anúncio do vencedor: {str(e)}")
