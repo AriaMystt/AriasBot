@@ -1966,8 +1966,19 @@ async def claim_giveaway(ctx, message_id: str):
 @commands.is_owner()
 async def sync(ctx):
     """Sincroniza os comandos slash com o Discord."""
+    # Defer the response to avoid timeout for slash commands
+    if hasattr(ctx, 'interaction') and ctx.interaction:
+        await ctx.interaction.response.defer(ephemeral=True)
+    
     await bot.tree.sync()
-    await ctx.send("✅ Comandos slash sincronizados com sucesso!", ephemeral=True)
+    
+    # Handle both slash and prefix commands
+    if hasattr(ctx, 'interaction') and ctx.interaction:
+        # Slash command - use followup
+        await ctx.interaction.followup.send("✅ Comandos slash sincronizados com sucesso!", ephemeral=True)
+    else:
+        # Prefix command
+        await ctx.send("✅ Comandos slash sincronizados com sucesso!")
 
 
 # ======================
