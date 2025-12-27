@@ -62,7 +62,7 @@ GIVEAWAY_ROLE_BONUSES = {
 # Sistema de Bonus de Entries por Convites
 GIVEAWAY_INVITE_BONUS = 1  # +1 entry por convite válido
 MIN_ACCOUNT_AGE_DAYS = 7  # Conta deve ter pelo menos 7 dias
-MIN_LAST_SEEN_HOURS = 24  # Usuário deve ter ficado online nas últimas 24 horas
+MIN_LAST_SEEN_HOURS = 48  # Usuário deve ter ficado online nas últimas 48 horas
 
 # ======================
 # FUNÇÕES DE CÁLCULO
@@ -1376,6 +1376,24 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         embed.add_field(
             name="🎯 **Sistema de Entries**",
             value=entries_description,
+            inline=False
+        )
+        
+        # Construir explicação detalhada do sistema de entries
+        explanation_parts = []
+        
+        # Explain what entries are
+        explanation_parts.append("🎯 **O que são Entries?** Cada entry representa uma chance de ganhar! Quanto mais entries você tiver, maiores são suas chances de vitória!")
+        
+        # Always explain base entries
+        explanation_parts.append("⭐ **Entry Básica:** Todo participante recebe automaticamente 1 entry ao clicar no botão de participação!")
+
+        # Always explain updates
+        explanation_parts.append("🔄 **Sistema Automático:** Suas entries são recalculadas automaticamente a cada 5 minutos para refletir convites e mudanças de cargo!")
+        
+        embed.add_field(
+            name="📖 **Como Aumentar suas Chances**",
+            value="\n\n".join(explanation_parts),
             inline=False
         )
         
