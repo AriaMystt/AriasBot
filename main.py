@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import asyncio
@@ -33,6 +33,7 @@ ROBLOX_TAX = 0.30   # Roblox pega 30% da gamepass
 # Arquivos JSON
 TICKETS_FILE = "tickets.json"
 PURCHASE_COUNT_FILE = "compras.json"
+GIVEAWAYS_FILE = "giveaways.json"
 
 # Sistema de Tiers
 TIERS = [
@@ -1116,6 +1117,162 @@ class TicketButtons(discord.ui.View):
 
 
 # ======================
+# SISTEMA DE GIVEAWAYS
+# ======================
+
+class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
+    giveaway_name = discord.ui.TextInput(
+        label="Nome do Giveaway",
+        placeholder="Ex: 1000 Robux Grátis",
+        required=True,
+        max_length=100
+    )
+    
+    end_time = discord.ui.TextInput(
+        label="Tempo de Duração",
+        placeholder="Ex: 1h, 30m, 2d (h=hora, m=minuto, d=dia)",
+        required=True,
+        max_length=20
+    )
+    
+    prize = discord.ui.TextInput(
+        label="Prêmio",
+        placeholder="Ex: 1000 Robux",
+        required=True,
+        max_length=200
+    )
+
+    def __init__(self, interaction):
+        super().__init__()
+        self.interaction = interaction
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Validar tempo
+        time_str = self.end_time.value.lower().strip()
+        total_seconds = 0
+        
+        try:
+            if time_str.endswith('d'):
+                days = int(time_str[:-1])
+                total_seconds = days * 24 * 60 * 60
+            elif time_str.endswith('h'):
+                hours = int(time_str[:-1])
+                total_seconds = hours * 60 * 60
+            elif time_str.endswith('m'):
+                minutes = int(time_str[:-1])
+                total_seconds = minutes * 60
+            else:
+                await interaction.response.send_message(
+                    "❌ **Formato de tempo inválido!**\nUse: `1h` (1 hora), `30m` (30 minutos), `2d` (2 dias)",
+                    ephemeral=True
+                )
+                return
+            
+            if total_seconds < 60:  # Mínimo 1 minuto
+                await interaction.response.send_message(
+                    "❌ **Duração muito curta!**\nO giveaway deve durar pelo menos 1 minuto.",
+                    ephemeral=True
+                )
+                return
+                
+            if total_seconds > 30 * 24 * 60 * 60:  # Máximo 30 dias
+                await interaction.response.send_message(
+                    "❌ **Duração muito longa!**\nO giveaway não pode durar mais de 30 dias.",
+                    ephemeral=True
+                )
+                return
+        
+        except ValueError:
+            await interaction.response.send_message(
+                "❌ **Formato de tempo inválido!**\nUse: `1h` (1 hora), `30m` (30 minutos), `2d` (2 dias)",
+                ephemeral=True
+            )
+            return
+
+        # Calcular horário de fim
+        end_datetime = datetime.utcnow() + timedelta(seconds=total_seconds)
+        
+        # Criar embed do giveaway
+        embed = discord.Embed(
+            title="🎉 **GIVEAWAY** 🎉",
+            description=f"**{self.giveaway_name.value}**",
+            color=0xFFD700,
+            timestamp=datetime.utcnow()
+        )
+        
+        embed.add_field(
+            name="🏆 **Prêmio**",
+            value=self.prize.value,
+            inline=False
+        )
+        
+        embed.add_field(
+            name="⏰ **Termina em**",
+            value=f"<t:{int(end_datetime.timestamp())}:R>",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="👥 **Participantes**",
+            value="`0`",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🎯 **Como participar**",
+            value="Clique no botão abaixo para entrar no giveaway!",
+            inline=False
+        )
+        
+        embed.set_footer(text="Boa sorte! 🍀")
+        
+        # Criar botão de participação
+        view = GiveawayView(self.giveaway_name.value, end_datetime.isoformat(), self.prize.value)
+        
+        # Enviar mensagem
+        message = await interaction.channel.send(embed=embed, view=view)
+        
+        # Salvar dados do giveaway
+        giveaway_data = {
+            "message_id": message.id,
+            "channel_id": interaction.channel.id,
+            "name": self.giveaway_name.value,
+            "prize": self.prize.value,
+            "end_time": end_datetime.isoformat(),
+            "created_by": interaction.user.id,
+            "participants": {},
+            "active": True
+        }
+        
+        data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+        data["giveaways"][str(message.id)] = giveaway_data
+        save_json(GIVEAWAYS_FILE, data)
+        
+        await interaction.response.send_message(
+            f"✅ **Giveaway criado com sucesso!**\nNome: {self.giveaway_name.value}\nPrêmio: {self.prize.value}\nDuração: {time_str}",
+            ephemeral=True
+        )
+
+
+class GiveawayView(discord.ui.View):
+    def __init__(self, name, end_time, prize):
+        super().__init__(timeout=None)
+        self.giveaway_name = name
+        self.end_time = end_time
+        self.prize = prize
+
+    @discord.ui.button(
+        label="Participar 🎉",
+        style=discord.ButtonStyle.primary,
+        emoji="🎯",
+        custom_id="join_giveaway"
+    )
+    async def join_giveaway(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # This will be handled by the global on_interaction event
+        pass
+
+
+# ======================
 # FUNÇÕES UTILITÁRIAS (MANTIDAS)
 # ======================
 
@@ -1671,6 +1828,34 @@ async def adicionarcompra(ctx, usuario: discord.User):
     await ctx.send(f"🧾 Compra adicionada com sucesso para {usuario.mention}.", ephemeral=True)
 
 
+@bot.tree.command(name="giveaway", description="Cria um novo giveaway")
+@app_commands.describe(channel="Canal onde o giveaway será criado (opcional)")
+async def create_giveaway(interaction: discord.Interaction, channel: discord.TextChannel = None):
+    """Slash command para criar um giveaway."""
+    # Verificar permissões (apenas administradores ou gerenciar servidor)
+    if not interaction.user.guild_permissions.manage_guild:
+        await interaction.response.send_message(
+            "❌ **Acesso restrito!**\nApenas administradores podem criar giveaways.",
+            ephemeral=True
+        )
+        return
+    
+    # Usar canal atual se nenhum foi especificado
+    target_channel = channel or interaction.channel
+    
+    # Verificar se bot tem permissões no canal
+    if not target_channel.permissions_for(interaction.guild.me).send_messages:
+        await interaction.response.send_message(
+            "❌ **Sem permissão!**\nNão tenho permissão para enviar mensagens no canal especificado.",
+            ephemeral=True
+        )
+        return
+    
+    # Abrir modal
+    modal = GiveawayModal(interaction)
+    await interaction.response.send_modal(modal)
+
+
 @bot.hybrid_command(name="sync", description="Sincroniza os comandos slash (apenas dono)")
 @commands.is_owner()
 async def sync(ctx):
@@ -1704,6 +1889,67 @@ async def on_ready():
         ),
         status=discord.Status.online
     )
+
+
+@bot.event
+async def on_interaction(interaction: discord.Interaction):
+    """Handle button interactions for giveaways."""
+    if interaction.type == discord.InteractionType.component:
+        custom_id = interaction.data.get("custom_id")
+        if custom_id == "join_giveaway":
+            # Handle giveaway join
+            data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+            giveaway_id = str(interaction.message.id)
+            
+            if giveaway_id not in data["giveaways"]:
+                await interaction.response.send_message(
+                    "❌ **Giveaway não encontrado!**",
+                    ephemeral=True
+                )
+                return
+            
+            giveaway = data["giveaways"][giveaway_id]
+            
+            # Verificar se giveaway ainda está ativo
+            if not giveaway.get("active", True):
+                await interaction.response.send_message(
+                    "❌ **Este giveaway já terminou!**",
+                    ephemeral=True
+                )
+                return
+            
+            # Verificar se usuário já participa
+            user_id = str(interaction.user.id)
+            if user_id in giveaway["participants"]:
+                await interaction.response.send_message(
+                    "⚠️ **Você já está participando deste giveaway!**",
+                    ephemeral=True
+                )
+                return
+            
+            # Adicionar participante
+            giveaway["participants"][user_id] = {
+                "entries": 1,
+                "joined_at": datetime.utcnow().isoformat()
+            }
+            
+            # Atualizar contador no embed
+            embed = interaction.message.embeds[0]
+            participant_count = len(giveaway["participants"])
+            
+            # Encontrar e atualizar campo de participantes
+            for i, field in enumerate(embed.fields):
+                if field.name == "👥 **Participantes**":
+                    embed.set_field_at(i, name="👥 **Participantes**", value=f"`{participant_count}`", inline=True)
+                    break
+            
+            await interaction.message.edit(embed=embed)
+            save_json(GIVEAWAYS_FILE, data)
+            
+            await interaction.response.send_message(
+                f"✅ **Você entrou no giveaway!**\n🎉 **{giveaway['name']}**\n🏆 **Prêmio:** {giveaway['prize']}",
+                ephemeral=True
+            )
 
 
 # ======================
