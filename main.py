@@ -1356,60 +1356,55 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             inline=True
         )
         
-        embed.add_field(
-            name="🎯 **Total Entries**",
-            value="`0`",
-            inline=True
-        )
-        
-        # Construir descrição do sistema de entries dinamicamente
-        entries_description = "• **Base:** 1 entry"
-        
-        if enable_roles:
-            entries_description += "\n• **Clientes:** +2 entries\n• **Staff:** +5 entries"
-        
-        if enable_invites:
-            entries_description += "\n• **Convites:** +1 por convite válido"
-        
-        entries_description += "\n• **Atualização:** A cada 5min"
-        
-        embed.add_field(
-            name="🎯 **Sistema de Entries**",
-            value=entries_description,
-            inline=False
-        )
-        
-        # Construir explicação detalhada do sistema de entries
-        explanation_parts = []
-        
-        # Explain what entries are
-        explanation_parts.append("🎯 **O que são Entries?** Cada entry representa uma chance de ganhar! Quanto mais entries você tiver, maiores são suas chances de vitória!")
-        
-        # Always explain base entries
-        explanation_parts.append("⭐ **Entry Básica:** Todo participante recebe automaticamente 1 entry ao clicar no botão de participação!")
+        # Only show entries information if at least one bonus type is enabled
+        if enable_roles or enable_invites:
+            embed.add_field(
+                name="🎯 **Total Entries**",
+                value="`0`",
+                inline=True
+            )
+            
+            # Construir descrição do sistema de entries dinamicamente
+            entries_description = "• **Base:** 1 entry"
+            
+            if enable_roles:
+                entries_description += "\n• **Clientes:** +1 entries\n• **Booster:** +1 entries"
+            
+            if enable_invites:
+                entries_description += "\n• **Convites:** +1 por convite válido"
+            
+            entries_description += "\n• **Atualização:** A cada 5min"
+            
+            embed.add_field(
+                name="🎯 **Sistema de Entries**",
+                value=entries_description,
+                inline=False
+            )
+            
+            # Construir explicação detalhada do sistema de entries
+            explanation_parts = []
+            
+            # Explain what entries are
+            explanation_parts.append("🎯 **O que são Entries?** Cada entry representa uma chance de ganhar! Quanto mais entries você tiver, maiores são suas chances de vitória!")
+            
+            # Always explain base entries
+            explanation_parts.append("⭐ **Entry Básica:** Todo participante recebe automaticamente 1 entry ao clicar no botão de participação!")
 
-        # Always explain updates
-        explanation_parts.append("🔄 **Sistema Automático:** Suas entries são recalculadas automaticamente a cada 5 minutos para refletir convites e mudanças de cargo!")
-        
-        embed.add_field(
-            name="📖 **Como Aumentar suas Chances**",
-            value="\n\n".join(explanation_parts),
-            inline=False
-        )
-        
-        # Construir instruções de participação dinamicamente
-        participation_instructions = "Clique no botão abaixo para entrar!"
-        
-        if enable_invites:
-            participation_instructions += "\nConvide amigos durante o giveaway para ganhar entries extras."
-        
-        participation_instructions += "\nVocê pode atualizar suas entries a cada 5 minutos."
-        
-        embed.add_field(
-            name="🎯 **Como participar**",
-            value=participation_instructions,
-            inline=False
-        )
+            # Always explain updates
+            explanation_parts.append("🔄 **Sistema Automático:** Suas entries são recalculadas automaticamente a cada 5 minutos para refletir convites e mudanças de cargo!")
+            
+            embed.add_field(
+                name="📖 **Como Aumentar suas Chances**",
+                value="\n\n".join(explanation_parts),
+                inline=False
+            )
+        else:
+            # If no bonuses are enabled, just show a simple message
+            embed.add_field(
+                name="🎯 **Como Participar**",
+                value="Clique no botão abaixo para participar!",
+                inline=False
+            )
         
         embed.set_footer(text="Boa sorte! 🍀")
         
