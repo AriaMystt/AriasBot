@@ -38,6 +38,7 @@ ROBLOX_TAX = 0.30   # Roblox pega 30% da gamepass
 TICKETS_FILE = "tickets.json"
 PURCHASE_COUNT_FILE = "compras.json"
 GIVEAWAYS_FILE = "giveaways.json"
+DISCOUNT_CODES_FILE = "discount_codes.json"
 
 # Sistema de Tiers
 TIERS = [
@@ -200,6 +201,42 @@ def select_weighted_winner(participants: dict) -> str:
     return random.choice(weighted_list)
 
 
+def validate_discount_code(code: str) -> tuple:
+    """Valida um código de desconto e retorna (is_valid, percentage, uses_left)."""
+    if not code:
+        return False, 0, 0
+    
+    codes = load_json(DISCOUNT_CODES_FILE, {})
+    code_upper = code.upper().strip()
+    
+    if code_upper in codes:
+        code_data = codes[code_upper]
+        if code_data.get("uses", 0) > 0:
+            return True, code_data.get("percentage", 0), code_data.get("uses", 0)
+    
+    return False, 0, 0
+
+
+def apply_discount(price: float, discount_percentage: int) -> float:
+    """Aplica desconto percentual ao preço."""
+    if discount_percentage <= 0:
+        return price
+    return price * (1 - discount_percentage / 100)
+
+
+def decrement_discount_uses(code: str):
+    """Decrementa as uses de um código de desconto."""
+    if not code:
+        return
+    
+    codes = load_json(DISCOUNT_CODES_FILE, {})
+    code_upper = code.upper().strip()
+    
+    if code_upper in codes:
+        codes[code_upper]["uses"] = max(0, codes[code_upper].get("uses", 0) - 1)
+        save_json(DISCOUNT_CODES_FILE, codes)
+
+
 # ======================
 # MODAIS PARA COMPRAS (MANTIDO)
 # ======================
@@ -210,6 +247,13 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
         placeholder="Digite apenas números (ex: 1000, 5000, 10000)",
         required=True,
         max_length=10
+    )
+    
+    discount_code = discord.ui.TextInput(
+        label="🎟️ Código de Desconto (opcional)",
+        placeholder="Digite o código ou deixe vazio",
+        required=False,
+        max_length=20
     )
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -223,11 +267,33 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
                 )
                 return
             
-            # Armazenar a quantidade no modal para uso posterior
+            # Validar código de desconto
+            discount_code = self.discount_code.value.strip() if self.discount_code.value else ""
+            discount_percentage = 0
+            discount_valid = False
+            
+            if discount_code:
+                discount_valid, discount_percentage, uses_left = validate_discount_code(discount_code)
+                if not discount_valid:
+                    await interaction.response.send_message(
+                        "❌ **Código de desconto inválido ou esgotado!**\n"
+                        "Verifique o código e tente novamente, ou deixe o campo vazio.",
+                        ephemeral=True
+                    )
+                    return
+            
+            # Calcular preço com desconto
+            valor_base = quantidade * ROBUX_RATE
+            valor_final = apply_discount(valor_base, discount_percentage)
+            
+            # Armazenar valores no modal para uso posterior
             self.quantidade_robux = quantidade
+            self.discount_code_used = discount_code.upper() if discount_valid else ""
+            self.discount_percentage = discount_percentage
+            self.valor_final = valor_final
             
             # Criar o ticket
-            await self.criar_ticket(interaction, "robux", quantidade)
+            await self.criar_ticket(interaction, "robux", quantidade, discount_code if discount_valid else None, valor_final)
             
         except ValueError:
             await interaction.response.send_message(
@@ -235,7 +301,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
                 ephemeral=True
             )
     
-    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, quantidade: int):
+    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, quantidade: int, discount_code: str = None, valor_final: float = None):
         """Cria um ticket para compra de Robux."""
         data = load_json(TICKETS_FILE, {"usuarios": {}})
         uid = str(interaction.user.id)
@@ -271,14 +337,21 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
         )
 
         data["usuarios"].setdefault(uid, {"tickets": [], "ticket_aberto": False})
-        data["usuarios"][uid]["tickets"].append({
+        ticket_data = {
             "canal_id": channel.id,
             "tipo": tipo,
             "status": "aberto",
             "criado_em": datetime.now(GMT_MINUS_3).isoformat(),
             "cliente_nome": user.name,
             "quantidade": quantidade
-        })
+        }
+        
+        if discount_code:
+            ticket_data["discount_code"] = discount_code.upper()
+            ticket_data["discount_percentage"] = getattr(self, 'discount_percentage', 0)
+            ticket_data["valor_final"] = valor_final
+        
+        data["usuarios"][uid]["tickets"].append(ticket_data)
         data["usuarios"][uid]["ticket_aberto"] = True
         save_json(TICKETS_FILE, data)
 
@@ -304,12 +377,21 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
         )
         
         # Adicionar valor em reais calculado
-        valor_reais = quantidade * ROBUX_RATE
-        embed_ticket.add_field(
-            name="💰 **VALOR ESTIMADO**",
-            value=f"```💵 R$ {valor_reais:,.2f}```",
-            inline=True
-        )
+        if discount_code and valor_final is not None:
+            valor_reais = valor_final
+            valor_original = quantidade * ROBUX_RATE
+            embed_ticket.add_field(
+                name="💰 **VALOR COM DESCONTO**",
+                value=f"```💵 R$ {valor_reais:,.2f}```\n~~R$ {valor_original:,.2f}~~\n🎟️ **Código:** `{discount_code.upper()}`",
+                inline=True
+            )
+        else:
+            valor_reais = quantidade * ROBUX_RATE
+            embed_ticket.add_field(
+                name="💰 **VALOR ESTIMADO**",
+                value=f"```💵 R$ {valor_reais:,.2f}```",
+                inline=True
+            )
         
         embed_ticket.add_field(
             name="📞 **ATENDIMENTO RÁPIDO**",
@@ -367,10 +449,18 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
         required=True,
         max_length=100
     )
+    
+    discount_code = discord.ui.TextInput(
+        label="🎟️ Código de Desconto (opcional)",
+        placeholder="Digite o código ou deixe vazio",
+        required=False,
+        max_length=20
+    )
 
     async def on_submit(self, interaction: discord.Interaction):
         jogo = self.jogo.value.strip()
         gamepass = self.gamepass.value.strip()
+        discount_code = self.discount_code.value.strip() if self.discount_code.value else ""
         
         if not jogo or not gamepass:
             await interaction.response.send_message(
@@ -379,14 +469,30 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             )
             return
         
+        # Validar código de desconto
+        discount_percentage = 0
+        discount_valid = False
+        
+        if discount_code:
+            discount_valid, discount_percentage, uses_left = validate_discount_code(discount_code)
+            if not discount_valid:
+                await interaction.response.send_message(
+                    "❌ **Código de desconto inválido ou esgotado!**\n"
+                    "Verifique o código e tente novamente, ou deixe o campo vazio.",
+                    ephemeral=True
+                )
+                return
+        
         # Armazenar os valores para uso posterior
         self.jogo_info = jogo
         self.gamepass_info = gamepass
+        self.discount_code_used = discount_code.upper() if discount_valid else ""
+        self.discount_percentage = discount_percentage
         
         # Criar o ticket
-        await self.criar_ticket(interaction, "gamepass", jogo, gamepass)
+        await self.criar_ticket(interaction, "gamepass", jogo, gamepass, discount_code if discount_valid else None)
     
-    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, jogo: str, gamepass: str):
+    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, jogo: str, gamepass: str, discount_code: str = None):
         """Cria um ticket para compra de Gamepass."""
         data = load_json(TICKETS_FILE, {"usuarios": {}})
         uid = str(interaction.user.id)
@@ -422,7 +528,7 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
         )
 
         data["usuarios"].setdefault(uid, {"tickets": [], "ticket_aberto": False})
-        data["usuarios"][uid]["tickets"].append({
+        ticket_data = {
             "canal_id": channel.id,
             "tipo": tipo,
             "status": "aberto",
@@ -430,7 +536,13 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             "cliente_nome": user.name,
             "jogo": jogo,
             "gamepass": gamepass
-        })
+        }
+        
+        if discount_code:
+            ticket_data["discount_code"] = discount_code.upper()
+            ticket_data["discount_percentage"] = getattr(self, 'discount_percentage', 0)
+        
+        data["usuarios"][uid]["tickets"].append(ticket_data)
         data["usuarios"][uid]["ticket_aberto"] = True
         save_json(TICKETS_FILE, data)
 
@@ -468,6 +580,13 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             value="Use `/calculadora` para calcular o valor exato da gamepass!",
             inline=True
         )
+        
+        if discount_code:
+            embed_ticket.add_field(
+                name="🎟️ **CÓDIGO DE DESCONTO**",
+                value=f"**Código:** `{discount_code.upper()}`\n**Desconto:** {getattr(self, 'discount_percentage', 0)}%",
+                inline=True
+            )
         
         embed_ticket.set_footer(
             text=f"Atendimento VIP para {user.name} • Obrigado por escolher nossa loja!",
@@ -737,6 +856,10 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
             self.data["usuarios"][self.uid]["ticket_aberto"] = False
             save_json(TICKETS_FILE, self.data)
 
+            # Decrementar uses do código de desconto se foi usado
+            if "discount_code" in self.ticket:
+                decrement_discount_uses(self.ticket["discount_code"])
+
             compras = load_json(PURCHASE_COUNT_FILE, {})
             user_compras = compras.get(self.uid, {"count": 0, "total": 0.0})
             user_compras["count"] += 1
@@ -772,16 +895,22 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
                 # Adicionar informações específicas da compra
                 if self.ticket["tipo"] == "robux":
                     quantidade = self.ticket.get("quantidade", "N/A")
+                    robux_info = f"**Quantidade:** {quantidade}"
+                    if "discount_code" in self.ticket:
+                        robux_info += f"\n**Código:** `{self.ticket['discount_code']}` ({self.ticket.get('discount_percentage', 0)}% off)"
                     embed_dm.add_field(
                         name="**Tipo:** Robux 💎",
-                        value=f"**Quantidade:** {quantidade}",
+                        value=robux_info,
                         inline=True
                     )
                 elif self.ticket["tipo"] == "gamepass":
-                    gamepass_nome = self.ticket.get("gamepass_nome", "N/A")
+                    gamepass_nome = self.ticket.get("gamepass", "N/A")
+                    gamepass_info = f"**Nome:** {gamepass_nome}"
+                    if "discount_code" in self.ticket:
+                        gamepass_info += f"\n**Código:** `{self.ticket['discount_code']}` ({self.ticket.get('discount_percentage', 0)}% off)"
                     embed_dm.add_field(
                         name="**Tipo:** Gamepass 🎮",
-                        value=f"**Nome:** {gamepass_nome}",
+                        value=gamepass_info,
                         inline=True
                     )
                 
