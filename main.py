@@ -2375,7 +2375,7 @@ async def finish_giveaway(giveaway_id, giveaway, data):
                 )
                 
                 embed_winner.add_field(
-                    name="⏰ **Como Reclamar**",
+                    name="⏰ **Como Resgatar**",
                     value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
                     
 Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
@@ -2479,7 +2479,7 @@ async def reroll_giveaway(giveaway_id, giveaway, data):
                 )
                 
                 embed_reroll.add_field(
-                    name="⏰ **Como Reclamar**",
+                    name="⏰ **Como Resgatar**",
                     value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
                     
 Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
