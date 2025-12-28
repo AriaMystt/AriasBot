@@ -29,6 +29,7 @@ CLOSED_CATEGORY_ID = 1449319381422051400
 STAFF_ROLE_ID = 1449319423780458597
 LOG_CHANNEL_ID = 1449319519733551245
 CLIENT_ROLE_ID = 1449248434317164608  # ADICIONE AQUI O ID DO CARGO PARA CLIENTES
+DISCOUNT_ANNOUNCEMENT_CHANNEL_ID = 1449310128619651194  # Use LOG_CHANNEL_ID for now, can be changed
 
 # Taxas de Conversão
 ROBUX_RATE = 0.035  # 1 Robux = R$ 0,035
@@ -223,10 +224,10 @@ def apply_discount(price: float, discount_percentage: int) -> float:
     return price * (1 - discount_percentage / 100)
 
 
-def decrement_discount_uses(code: str):
-    """Decrementa as uses de um código de desconto."""
+async def decrement_discount_uses(code: str, interaction_or_guild) -> bool:
+    """Decrementa as uses de um código de desconto. Retorna True se expirou."""
     if not code:
-        return
+        return False
     
     codes = load_json(DISCOUNT_CODES_FILE, {})
     code_upper = code.upper().strip()
@@ -234,6 +235,63 @@ def decrement_discount_uses(code: str):
     if code_upper in codes:
         codes[code_upper]["uses"] = max(0, codes[code_upper].get("uses", 0) - 1)
         save_json(DISCOUNT_CODES_FILE, codes)
+        
+        # Verificar se expirou
+        if codes[code_upper]["uses"] == 0:
+            # Anunciar expiração
+            await announce_code_expiration(interaction_or_guild, code_upper, "usado por todos os clientes")
+            return True
+    
+    return False
+
+
+async def announce_code_expiration(interaction_or_guild, code: str, motive: str):
+    """Anuncia a expiração de um código de desconto."""
+    try:
+        # Determinar o guild e canal
+        if hasattr(interaction_or_guild, 'guild'):
+            guild = interaction_or_guild.guild
+        else:
+            guild = interaction_or_guild
+        
+        channel = guild.get_channel(DISCOUNT_ANNOUNCEMENT_CHANNEL_ID)
+        if not channel:
+            return
+        
+        embed = discord.Embed(
+            title="🎟️ **CÓDIGO DE DESCONTO EXPIRADO!**",
+            description=f"""
+            O código de desconto **`{code}`** expirou e não pode mais ser utilizado.
+            
+            **📋 MOTIVO:** {motive}
+            **⏰ EXPIRADO EM:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+            """,
+            color=discord.Color.red(),
+            timestamp=datetime.now(GMT_MINUS_3)
+        )
+        
+        embed.set_footer(text="Sistema de Descontos AriasBot")
+        
+        await channel.send(embed=embed)
+        
+    except Exception as e:
+        print(f"Erro ao anunciar expiração do código: {e}")
+
+
+async def expire_discount_code(code: str, motive: str, interaction) -> bool:
+    """Expira manualmente um código de desconto."""
+    codes = load_json(DISCOUNT_CODES_FILE, {})
+    code_upper = code.upper().strip()
+    
+    if code_upper not in codes:
+        return False
+    
+    codes[code_upper]["uses"] = 0
+    save_json(DISCOUNT_CODES_FILE, codes)
+    
+    # Anunciar expiração
+    await announce_code_expiration(interaction, code_upper, motive)
+    return True
 
 
 # ======================
@@ -857,7 +915,7 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
 
             # Decrementar uses do código de desconto se foi usado
             if "discount_code" in self.ticket:
-                decrement_discount_uses(self.ticket["discount_code"])
+                await decrement_discount_uses(self.ticket["discount_code"], interaction)
 
             compras = load_json(PURCHASE_COUNT_FILE, {})
             user_compras = compras.get(self.uid, {"count": 0, "total": 0.0})
@@ -2242,6 +2300,56 @@ async def sync(ctx):
     else:
         # Prefix command
         await ctx.send("✅ Comandos slash sincronizados com sucesso!")
+
+
+@bot.hybrid_command(name="expirecode", description="Expira manualmente um código de desconto (apenas staff)")
+@commands.has_permissions(administrator=True)
+@app_commands.describe(
+    codename="Nome do código de desconto a expirar",
+    motive="Motivo da expiração"
+)
+async def expirecode(ctx, codename: str, motive: str):
+    """Expira manualmente um código de desconto."""
+    # Defer for slash commands
+    if hasattr(ctx, 'interaction') and ctx.interaction:
+        await ctx.interaction.response.defer(ephemeral=True)
+    
+    # Verificar se o código existe
+    codes = load_json(DISCOUNT_CODES_FILE, {})
+    code_upper = codename.upper().strip()
+    
+    if code_upper not in codes:
+        response = f"❌ **Código não encontrado!**\nO código `{codename}` não existe no sistema."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
+        return
+    
+    # Verificar se já está expirado
+    if codes[code_upper].get("uses", 0) == 0:
+        response = f"⚠️ **Código já expirado!**\nO código `{codename}` já não possui uses restantes."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
+        return
+    
+    # Expirar o código
+    success = await expire_discount_code(code_upper, motive, ctx)
+    
+    if success:
+        response = f"✅ **Código expirado com sucesso!**\nO código `{code_upper}` foi expirado manualmente."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
+    else:
+        response = f"❌ **Erro ao expirar código!**\nNão foi possível expirar o código `{codename}`."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
 
 
 # ======================
