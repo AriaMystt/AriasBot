@@ -964,10 +964,7 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
             
             await interaction.response.send_message(embed=embed_confirma)
             
-            # Desabilitar botões
-            for child in self.button.view.children:
-                child.disabled = True
-            await self.original_interaction.edit_original_response(view=self.button.view)
+            # Botões permanecem ativos para controle adicional
             
         except ValueError:
             await interaction.response.send_message(
