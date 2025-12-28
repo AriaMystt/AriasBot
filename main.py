@@ -54,8 +54,7 @@ TIERS = [
 # Sistema de Bonus de Entries para Giveaways
 GIVEAWAY_ROLE_BONUSES = {
     # Role ID: bonus entries
-    1449319423780458597: 5,  # STAFF_ROLE_ID - Staff gets +5 entries
-    1449248434317164608: 2,  # CLIENT_ROLE_ID - Clients get +2 entries
+    1449248434317164608: 1,  # CLIENT_ROLE_ID - Clients get +2 entries
     # Add more role bonuses here as needed
     # Example: 123456789012345678: 3,  # Some role gets +3 entries
 }
