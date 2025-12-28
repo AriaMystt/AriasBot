@@ -2167,10 +2167,10 @@ async def create_giveaway(interaction: discord.Interaction, channel: discord.Tex
     await interaction.response.send_modal(modal)
 
 
-@bot.hybrid_command(name="claimgiveaway", description="Marca um giveaway como reclamado (staff apenas)")
+@bot.hybrid_command(name="claimgiveaway", description="Marca um giveaway como resgatado (staff apenas)")
 @app_commands.describe(message_id="ID da mensagem do giveaway")
 async def claim_giveaway(ctx, message_id: str):
-    """Marca um giveaway como reclamado por um membro da staff."""
+    """Marca um giveaway como resgatado por um membro da staff."""
     # Verificar permissões (apenas staff)
     if STAFF_ROLE_ID not in [r.id for r in ctx.author.roles]:
         await ctx.send("❌ **Acesso restrito!**\nApenas membros da equipe podem usar este comando.", ephemeral=True)
@@ -2187,14 +2187,14 @@ async def claim_giveaway(ctx, message_id: str):
         giveaway = data["giveaways"][message_id]
         
         if giveaway.get("active", True):
-            await ctx.send("❌ **Este giveaway ainda está ativo!**\nAguarde o fim do giveaway para marcar como reclamado.", ephemeral=True)
+            await ctx.send("❌ **Este giveaway ainda está ativo!**\nAguarde o fim do giveaway para marcar como resgatado.", ephemeral=True)
             return
         
         if giveaway.get("claimed", False):
-            await ctx.send("⚠️ **Este giveaway já foi marcado como reclamado!**", ephemeral=True)
+            await ctx.send("⚠️ **Este giveaway já foi marcado como resgatado!**", ephemeral=True)
             return
         
-        # Marcar como reclamado
+        # Marcar como resgatado
         giveaway["claimed"] = True
         giveaway["claimed_at"] = datetime.now(GMT_MINUS_3).isoformat()
         giveaway["claimed_by"] = ctx.author.id
@@ -2208,18 +2208,18 @@ async def claim_giveaway(ctx, message_id: str):
                 if message:
                     embed = message.embeds[0]
                     
-                    # Adicionar campo de reclamado
+                    # Adicionar campo de resgatado
                     embed.add_field(
-                        name="✅ **PRÊMIO RECLAMADO**",
-                        value=f"Reclamado por {ctx.author.mention}",
+                        name="✅ **PRÊMIO resgatado**",
+                        value=f"resgatado por {ctx.author.mention}",
                         inline=False
                     )
                     
                     await message.edit(embed=embed)
         except Exception as e:
-            print(f"Erro ao atualizar embed do giveaway reclamado: {str(e)}")
+            print(f"Erro ao atualizar embed do giveaway resgatado: {str(e)}")
         
-        await ctx.send(f"✅ **Giveaway marcado como reclamado!**\nPrêmio: {giveaway['prize']}\nVencedor: <@{giveaway['winner']}>", ephemeral=True)
+        await ctx.send(f"✅ **Giveaway marcado como resgatado!**\nPrêmio: {giveaway['prize']}\nVencedor: <@{giveaway['winner']}>", ephemeral=True)
         
     except Exception as e:
         await ctx.send(f"❌ **Erro ao processar comando:** {str(e)}", ephemeral=True)
@@ -2378,7 +2378,7 @@ async def finish_giveaway(giveaway_id, giveaway, data):
                     name="⏰ **Como Reclamar**",
                     value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
                     
-Se não reclamar dentro do prazo, o prêmio será sorteado novamente.""",
+Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
                     inline=False
                 )
                 
@@ -2482,7 +2482,7 @@ async def reroll_giveaway(giveaway_id, giveaway, data):
                     name="⏰ **Como Reclamar**",
                     value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
                     
-Se não reclamar dentro do prazo, o prêmio será sorteado novamente.""",
+Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
                     inline=False
                 )
                 
