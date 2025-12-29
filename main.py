@@ -2611,6 +2611,58 @@ Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
         print(f"❌ Erro ao fazer reroll do giveaway {giveaway_id}: {str(e)}")
 
 
+async def update_giveaway_embeds():
+    """Atualiza os embeds dos giveaways ativos a cada 30 segundos para evitar rate limits."""
+    await bot.wait_until_ready()
+
+    while not bot.is_closed():
+        try:
+            await asyncio.sleep(30)  # Update every 30 seconds
+
+            data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+            current_time = datetime.now(GMT_MINUS_3)
+
+            for giveaway_id, giveaway in data["giveaways"].items():
+                if not giveaway.get("active", True):
+                    continue  # Skip inactive giveaways
+
+                try:
+                    # Get the channel and message
+                    channel = bot.get_channel(giveaway["channel_id"])
+                    if not channel:
+                        continue
+
+                    message = await channel.fetch_message(int(giveaway_id))
+                    if not message:
+                        continue
+
+                    # Update embed with current stats
+                    embed = message.embeds[0]
+                    participant_count = len(giveaway["participants"])
+                    total_entries = sum(p["entries"] for p in giveaway["participants"].values())
+
+                    # Update participant count and total entries fields
+                    for i, field in enumerate(embed.fields):
+                        if field.name == "👥 **Participantes**":
+                            embed.set_field_at(i, name="👥 **Participantes**", value=f"`{participant_count}`", inline=True)
+                        elif field.name == "🎯 **Total Entries**":
+                            embed.set_field_at(i, name="🎯 **Total Entries**", value=f"`{total_entries}`", inline=True)
+
+                    # Update the message
+                    await message.edit(embed=embed)
+
+                    # Small delay between updates to avoid rate limits
+                    await asyncio.sleep(1)
+
+                except Exception as e:
+                    print(f"❌ Error updating giveaway {giveaway_id} embed: {str(e)}")
+                    continue
+
+        except Exception as e:
+            print(f"❌ Error in giveaway embed update task: {str(e)}")
+            await asyncio.sleep(30)
+
+
 async def auto_update_giveaway_entries():
     """Atualiza automaticamente as entries dos participantes a cada hora, processando lentamente."""
     await bot.wait_until_ready()
@@ -2717,8 +2769,10 @@ async def on_ready():
     # Iniciar verificação automática de giveaways
     bot.loop.create_task(check_expired_giveaways())
     bot.loop.create_task(auto_update_giveaway_entries())
+    bot.loop.create_task(update_giveaway_embeds())
     print("✅ Sistema de verificação de giveaways iniciado!")
     print("✅ Sistema de auto-update de entries iniciado!")
+    print("✅ Sistema de atualização de embeds de giveaways iniciado!")
 
 
 @bot.event
@@ -2775,16 +2829,6 @@ async def on_interaction(interaction: discord.Interaction):
                 giveaway["participants"][user_id]["entries"] = total_entries
                 giveaway["participants"][user_id]["last_update"] = current_time.isoformat()
                 
-                # Atualizar embed com novo total de entries
-                embed = interaction.message.embeds[0]
-                total_entries_sum = sum(p["entries"] for p in giveaway["participants"].values())
-                
-                for i, field in enumerate(embed.fields):
-                    if field.name == "🎯 **Total Entries**":
-                        embed.set_field_at(i, name="🎯 **Total Entries**", value=f"`{total_entries_sum}`", inline=True)
-                        break
-                
-                await interaction.message.edit(embed=embed)
                 save_json(GIVEAWAYS_FILE, data)
                 
                 await interaction.response.send_message(
@@ -2800,19 +2844,6 @@ async def on_interaction(interaction: discord.Interaction):
                 "last_update": current_time.isoformat()
             }
             
-            # Atualizar contador no embed
-            embed = interaction.message.embeds[0]
-            participant_count = len(giveaway["participants"])
-            total_entries = sum(p["entries"] for p in giveaway["participants"].values())
-            
-            # Encontrar e atualizar campos
-            for i, field in enumerate(embed.fields):
-                if field.name == "👥 **Participantes**":
-                    embed.set_field_at(i, name="👥 **Participantes**", value=f"`{participant_count}`", inline=True)
-                elif field.name == "🎯 **Total Entries**":
-                    embed.set_field_at(i, name="🎯 **Total Entries**", value=f"`{total_entries}`", inline=True)
-            
-            await interaction.message.edit(embed=embed)
             save_json(GIVEAWAYS_FILE, data)
             
             await interaction.response.send_message(
