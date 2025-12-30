@@ -1415,7 +1415,6 @@ class TicketButtons(discord.ui.View):
 # ======================
 # SISTEMA DE GIVEAWAYS
 # ======================
-
 class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
     giveaway_name = discord.ui.TextInput(
         label="Nome do Giveaway",
@@ -1513,7 +1512,7 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         # Calcular horário de fim
         end_datetime = datetime.now(GMT_MINUS_3) + timedelta(seconds=total_seconds)
         
-        # Criar embed do giveaway
+        # Criar embed do giveaway (SIMPLIFICADO - sem estatísticas)
         embed = discord.Embed(
             title=f"🎉 **{self.giveaway_name.value}** 🎉",
             description="",
@@ -1533,25 +1532,13 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             inline=True
         )
         
-        embed.add_field(
-            name="👥 **Participantes**",
-            value="`0`",
-            inline=True
-        )
-        
         # Only show entries information if at least one bonus type is enabled
         if enable_roles or enable_invites:
-            embed.add_field(
-                name="🎯 **Total Entries**",
-                value="`0`",
-                inline=True
-            )
-            
             # Construir descrição do sistema de entries dinamicamente
             entries_description = "• **Base:** 1 entry"
             
             if enable_roles:
-                entries_description += "\n• **Clientes:** +1 entries\n• **Booster:** +1 entries"
+                entries_description += "\n• **Clientes:** +1 entries"
             
             if enable_invites:
                 entries_description += "\n• **Convites:** +1 por convite válido"
@@ -1559,24 +1546,6 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
             embed.add_field(
                 name="🎯 **Sistema de Entries**",
                 value=entries_description,
-                inline=False
-            )
-            
-            # Construir explicação detalhada do sistema de entries
-            explanation_parts = []
-            
-            # Explain what entries are
-            explanation_parts.append("🎯 **O que são Entries?** Cada entry representa uma chance! Quanto mais entries você tiver, maiores são suas chances de ganhar!")
-            
-            # Always explain base entries
-            explanation_parts.append("⭐ **Entry Básica:** Todo participante recebe automaticamente 1 entry ao clicar no botão de participação!")
-
-            # Always explain updates
-            explanation_parts.append("🔄 **Sistema Automático:** Suas entries são recalculadas automaticamente a cada 1 hora para refletir convites e mudanças de cargo. Ou você pode clicar no botão de novo para atualizar manualmente!")
-            
-            embed.add_field(
-                name="📖 **Como Aumentar suas Chances**",
-                value="\n\n".join(explanation_parts),
                 inline=False
             )
         else:
@@ -1618,7 +1587,7 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         save_json(GIVEAWAYS_FILE, data)
         
         await interaction.response.send_message(
-            f"✅ **Giveaway criado com sucesso!**\nNome: {self.giveaway_name.value}\nPrêmio: {self.prize.value}\nDuração: {time_str}\n\n🎯 **Bônus Ativados:**\n• Cargos: {'✅' if enable_roles else '❌'}\n• Convites: {'✅' if enable_invites else '❌'}",
+            f"✅ **Giveaway criado com sucesso!**\nNome: {self.giveaway_name.value}\nPrêmio: {self.prize.value}\nDuração: {time_str}\n\n🎯 **Bônus Ativados:**\n• Cargos: {'✅' if enable_roles else '❌'}\n• Convites: {'✅' if enable_invites else '❌'}\n\n📝 **Nota:** Dados de participantes são armazenados apenas no JSON, não são exibidos publicamente.",
             ephemeral=True
         )
 
@@ -2388,9 +2357,8 @@ async def check_expired_giveaways():
             print(f"❌ Erro na verificação de giveaways: {str(e)}")
             await asyncio.sleep(60)
 
-
 async def finish_giveaway(giveaway_id, giveaway, data):
-    """Finaliza um giveaway selecionando um vencedor e envia uma mensagem, SEM editar a mensagem original."""
+    """Finaliza um giveaway selecionando um vencedor e envia uma mensagem, SEM estatísticas."""
     try:
         # Obter participantes
         participants = giveaway["participants"]
@@ -2402,7 +2370,7 @@ async def finish_giveaway(giveaway_id, giveaway, data):
             giveaway["status"] = "cancelled_no_participants"
             save_json(GIVEAWAYS_FILE, data)
             
-            # Enviar mensagem de cancelamento (nova mensagem, não editar a original)
+            # Enviar mensagem de cancelamento
             try:
                 channel = bot.get_channel(giveaway["channel_id"])
                 if channel:
@@ -2449,12 +2417,11 @@ async def finish_giveaway(giveaway_id, giveaway, data):
         giveaway["claimed"] = False
         save_json(GIVEAWAYS_FILE, data)
         
-        # Enviar mensagem de anúncio do vencedor (NOVA mensagem, NÃO editar a original)
+        # Enviar mensagem de anúncio do vencedor (SEM estatísticas)
         try:
             channel = bot.get_channel(giveaway["channel_id"])
             if channel:
                 winner_mention = winner_user.mention if winner_user else f"<@{winner_id}>"
-                content_msg = f"**🎉 GIVEAWAY FINALIZADO! Parabéns {winner_mention}! 🎉**"
                 
                 embed_winner = discord.Embed(
                     title="🎉 **GIVEAWAY FINALIZADO** 🎉",
@@ -2476,20 +2443,6 @@ async def finish_giveaway(giveaway_id, giveaway, data):
                 )
                 
                 embed_winner.add_field(
-                    name="👥 **Total de Participantes**",
-                    value=f"`{len(participants)}`",
-                    inline=True
-                )
-                
-                # Calcular total de entries
-                total_entries = sum(p["entries"] for p in participants.values())
-                embed_winner.add_field(
-                    name="🎯 **Total de Entries**",
-                    value=f"`{total_entries}`",
-                    inline=True
-                )
-                
-                embed_winner.add_field(
                     name="⏰ **Como Resgatar**",
                     value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
 
@@ -2497,16 +2450,15 @@ Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
                     inline=False
                 )
                 
-                embed_winner.set_footer(text="Boa sorte na próxima! 🍀")
+                embed_winner.set_footer(text="Parabéns ao vencedor! 🎉")
                 
-                await channel.send(content=content_msg, embed=embed_winner)
+                await channel.send(content=f"**🎉 GIVEAWAY FINALIZADO! Parabéns {winner_mention}! 🎉**", embed=embed_winner)
                 
         except Exception as e:
             print(f"Erro ao enviar anúncio do vencedor: {str(e)}")
             
     except Exception as e:
         print(f"❌ Erro ao finalizar giveaway {giveaway_id}: {str(e)}")
-
 
 async def reroll_giveaway(giveaway_id, giveaway, data):
     """Faz reroll de um giveaway selecionando um novo vencedor."""
@@ -2519,7 +2471,7 @@ async def reroll_giveaway(giveaway_id, giveaway, data):
             giveaway["status"] = "cancelled_insufficient_participants"
             save_json(GIVEAWAYS_FILE, data)
             
-            # Tentar enviar mensagem de cancelamento
+            # Enviar mensagem de cancelamento
             try:
                 channel = bot.get_channel(giveaway["channel_id"])
                 if channel:
@@ -2596,15 +2548,9 @@ async def reroll_giveaway(giveaway_id, giveaway, data):
                 embed_reroll.add_field(
                     name="⏰ **Como Resgatar**",
                     value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
-                    
+
 Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
                     inline=False
-                )
-                
-                embed_reroll.add_field(
-                    name="📊 **Rerolls**",
-                    value=f"`{giveaway['reroll_count']}`",
-                    inline=True
                 )
                 
                 embed_reroll.set_footer(text="Boa sorte na próxima! 🍀")
