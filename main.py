@@ -2390,7 +2390,7 @@ async def check_expired_giveaways():
 
 
 async def finish_giveaway(giveaway_id, giveaway, data):
-    """Finaliza um giveaway selecionando um vencedor."""
+    """Finaliza um giveaway selecionando um vencedor e envia uma mensagem, SEM editar a mensagem original."""
     try:
         # Obter participantes
         participants = giveaway["participants"]
@@ -2402,22 +2402,34 @@ async def finish_giveaway(giveaway_id, giveaway, data):
             giveaway["status"] = "cancelled_no_participants"
             save_json(GIVEAWAYS_FILE, data)
             
-            # Tentar enviar mensagem de cancelamento
+            # Enviar mensagem de cancelamento (nova mensagem, não editar a original)
             try:
                 channel = bot.get_channel(giveaway["channel_id"])
                 if channel:
-                    message = await channel.fetch_message(int(giveaway_id))
-                    if message:
-                        embed = message.embeds[0]
-                        embed.color = discord.Color.red()
-                        embed.add_field(
-                            name="❌ **GIVEAWAY CANCELADO**",
-                            value="Nenhum participante se inscreveu neste giveaway.",
-                            inline=False
-                        )
-                        await message.edit(embed=embed, view=None)
+                    embed = discord.Embed(
+                        title="❌ **GIVEAWAY CANCELADO** ❌",
+                        description=f"**{giveaway['name']}**",
+                        color=discord.Color.red(),
+                        timestamp=datetime.now(GMT_MINUS_3)
+                    )
+                    
+                    embed.add_field(
+                        name="🏆 **Prêmio**",
+                        value=giveaway["prize"],
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name="📊 **Resultado**",
+                        value="Nenhum participante se inscreveu neste giveaway.",
+                        inline=False
+                    )
+                    
+                    embed.set_footer(text="Giveaway cancelado por falta de participantes")
+                    
+                    await channel.send(embed=embed)
             except Exception as e:
-                print(f"Erro ao atualizar mensagem cancelada: {str(e)}")
+                print(f"Erro ao enviar mensagem de cancelamento: {str(e)}")
             
             return
         
@@ -2437,55 +2449,50 @@ async def finish_giveaway(giveaway_id, giveaway, data):
         giveaway["claimed"] = False
         save_json(GIVEAWAYS_FILE, data)
         
-        # Atualizar embed do giveaway
-        try:
-            channel = bot.get_channel(giveaway["channel_id"])
-            if channel:
-                message = await channel.fetch_message(int(giveaway_id))
-                if message:
-                    embed = message.embeds[0]
-                    embed.color = discord.Color.green()
-                    
-                    # Atualizar campos
-                    for i, field in enumerate(embed.fields):
-                        if field.name == "⏰ **Termina em**":
-                            embed.set_field_at(i, name="⏰ **Terminou**", value=f"<t:{int(datetime.fromisoformat(giveaway['finished_at']).timestamp())}:R>", inline=True)
-                        elif field.name == "👥 **Participantes**":
-                            embed.set_field_at(i, name="👥 **Participantes**", value=f"`{len(participants)}`", inline=True)
-                    
-                    embed.add_field(
-                        name="🏆 **VENCEDOR**",
-                        value=f"{winner_user.mention if winner_user else f'<@{winner_id}>'}",
-                        inline=False
-                    )
-                    
-                    await message.edit(embed=embed, view=None)
-        except Exception as e:
-            print(f"Erro ao atualizar embed do giveaway: {str(e)}")
-        
-        # Enviar mensagem de anúncio do vencedor
+        # Enviar mensagem de anúncio do vencedor (NOVA mensagem, NÃO editar a original)
         try:
             channel = bot.get_channel(giveaway["channel_id"])
             if channel:
                 winner_mention = winner_user.mention if winner_user else f"<@{winner_id}>"
-                content_msg=f"**Parabéns {winner_mention}!**"
+                content_msg = f"**🎉 GIVEAWAY FINALIZADO! Parabéns {winner_mention}! 🎉**"
+                
                 embed_winner = discord.Embed(
                     title="🎉 **GIVEAWAY FINALIZADO** 🎉",
-                    description=f"**Parabéns {winner_mention}!**",
+                    description=f"**{giveaway['name']}**",
                     color=0xFFD700,
                     timestamp=datetime.now(GMT_MINUS_3)
                 )
                 
                 embed_winner.add_field(
-                    name="🏆 **Prêmio Ganho**",
+                    name="🏆 **Prêmio**",
                     value=giveaway["prize"],
                     inline=False
                 )
                 
                 embed_winner.add_field(
+                    name="👑 **Vencedor(a)**",
+                    value=winner_mention,
+                    inline=True
+                )
+                
+                embed_winner.add_field(
+                    name="👥 **Total de Participantes**",
+                    value=f"`{len(participants)}`",
+                    inline=True
+                )
+                
+                # Calcular total de entries
+                total_entries = sum(p["entries"] for p in participants.values())
+                embed_winner.add_field(
+                    name="🎯 **Total de Entries**",
+                    value=f"`{total_entries}`",
+                    inline=True
+                )
+                
+                embed_winner.add_field(
                     name="⏰ **Como Resgatar**",
                     value="""Abra um ticket de suporte nas próximas **24 horas** para receber seu prêmio!
-                    
+
 Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
                     inline=False
                 )
@@ -2610,59 +2617,6 @@ Se não resgatar dentro do prazo, o prêmio será sorteado novamente.""",
     except Exception as e:
         print(f"❌ Erro ao fazer reroll do giveaway {giveaway_id}: {str(e)}")
 
-
-async def update_giveaway_embeds():
-    """Atualiza os embeds dos giveaways ativos a cada 30 segundos para evitar rate limits."""
-    await bot.wait_until_ready()
-
-    while not bot.is_closed():
-        try:
-            await asyncio.sleep(30)  # Update every 30 seconds
-
-            data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
-            current_time = datetime.now(GMT_MINUS_3)
-
-            for giveaway_id, giveaway in data["giveaways"].items():
-                if not giveaway.get("active", True):
-                    continue  # Skip inactive giveaways
-
-                try:
-                    # Get the channel and message
-                    channel = bot.get_channel(giveaway["channel_id"])
-                    if not channel:
-                        continue
-
-                    message = await channel.fetch_message(int(giveaway_id))
-                    if not message:
-                        continue
-
-                    # Update embed with current stats
-                    embed = message.embeds[0]
-                    participant_count = len(giveaway["participants"])
-                    total_entries = sum(p["entries"] for p in giveaway["participants"].values())
-
-                    # Update participant count and total entries fields
-                    for i, field in enumerate(embed.fields):
-                        if field.name == "👥 **Participantes**":
-                            embed.set_field_at(i, name="👥 **Participantes**", value=f"`{participant_count}`", inline=True)
-                        elif field.name == "🎯 **Total Entries**":
-                            embed.set_field_at(i, name="🎯 **Total Entries**", value=f"`{total_entries}`", inline=True)
-
-                    # Update the message
-                    await message.edit(embed=embed)
-
-                    # Small delay between updates to avoid rate limits
-                    await asyncio.sleep(1)
-
-                except Exception as e:
-                    print(f"❌ Error updating giveaway {giveaway_id} embed: {str(e)}")
-                    continue
-
-        except Exception as e:
-            print(f"❌ Error in giveaway embed update task: {str(e)}")
-            await asyncio.sleep(30)
-
-
 async def auto_update_giveaway_entries():
     """Atualiza automaticamente as entries dos participantes a cada hora, processando lentamente."""
     await bot.wait_until_ready()
@@ -2769,11 +2723,8 @@ async def on_ready():
     # Iniciar verificação automática de giveaways
     bot.loop.create_task(check_expired_giveaways())
     bot.loop.create_task(auto_update_giveaway_entries())
-    bot.loop.create_task(update_giveaway_embeds())
     print("✅ Sistema de verificação de giveaways iniciado!")
     print("✅ Sistema de auto-update de entries iniciado!")
-    print("✅ Sistema de atualização de embeds de giveaways iniciado!")
-
 
 @bot.event
 async def on_interaction(interaction: discord.Interaction):
