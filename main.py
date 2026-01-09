@@ -1947,62 +1947,6 @@ async def calculadora(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=CalculatorView(), ephemeral=True)
 
-# ======================
-# COMANDO DE REROLL
-# ======================
-
-@bot.tree.command(name="giveaway_reroll", description="Realiza um novo sorteio para um giveaway finalizado.")
-@app_commands.describe(message_id="O ID da mensagem do giveaway para re-sortear")
-@app_commands.checks.has_permissions(administrator=True)
-async def giveaway_reroll(interaction: discord.Interaction, message_id: str):
-    # Carregar dados dos giveaways com segurança
-    data = load_json(GIVEAWAYS_FILE, [])
-    
-    # Validar se 'data' é uma lista para evitar o erro de TypeError
-    if not isinstance(data, list):
-        return await interaction.response.send_message("❌ Erro: O banco de dados de giveaways está em um formato inválido.", ephemeral=True)
-
-    try:
-        msg_id_int = int(message_id)
-    except ValueError:
-        return await interaction.response.send_message("❌ O ID fornecido não é um número válido.", ephemeral=True)
-
-    # Buscar o giveaway na lista (tratando cada 'g' como dicionário)
-    giveaway = None
-    for g in data:
-        if isinstance(g, dict) and g.get("message_id") == msg_id_int:
-            giveaway = g
-            break
-    
-    if not giveaway:
-        return await interaction.response.send_message("❌ Giveaway não encontrado no banco de dados.", ephemeral=True)
-    
-    # Verificar se o giveaway já terminou
-    if not giveaway.get("ended", False):
-        return await interaction.response.send_message("❌ Este giveaway ainda está ativo. Use este comando apenas em finalizados.", ephemeral=True)
-
-    participants = giveaway.get("participants", {})
-    if not participants:
-        return await interaction.response.send_message("❌ Não há participantes para realizar o re-sorteio.", ephemeral=True)
-
-    # Selecionar novo vencedor usando sua lógica de peso (weighted random)
-    new_winner_id = select_weighted_winner(participants)
-    
-    if not new_winner_id:
-        return await interaction.response.send_message("❌ Não foi possível selecionar um vencedor.", ephemeral=True)
-
-    # Anunciar o novo vencedor
-    channel = interaction.guild.get_channel(giveaway["channel_id"])
-    if channel:
-        try:
-            # Tentar enviar no canal original
-            await channel.send(f"🎉 **Reroll!** O novo vencedor de **{giveaway['name']}** é <@{new_winner_id}>! Parabéns!")
-            await interaction.response.send_message(f"✅ Re-sorteio realizado! Novo vencedor: <@{new_winner_id}>", ephemeral=True)
-        except Exception:
-            # Fallback caso o bot não tenha permissão no canal
-            await interaction.response.send_message(f"🎉 O novo vencedor do sorteio é <@{new_winner_id}>!", ephemeral=False)
-    else:
-        await interaction.response.send_message(f"🎉 O novo vencedor do sorteio é <@{new_winner_id}>!", ephemeral=False)
 
 @bot.tree.command(name="tiers", description="Mostra todos os tiers disponíveis e seus benefícios")
 async def tiers(interaction: discord.Interaction):
@@ -2037,6 +1981,62 @@ async def tiers(interaction: discord.Interaction):
     embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.hybrid_command(name="reroll", description="Sorteia um novo vencedor para um giveaway finalizado (apenas staff)")
+@app_commands.describe(message_id="ID da mensagem do giveaway")
+async def reroll(ctx, message_id: str):
+    """Realiza o reroll manual de um giveaway."""
+    # Verificar permissões (apenas staff ou admin)
+    is_staff = STAFF_ROLE_ID in [r.id for r in ctx.author.roles]
+    is_admin = ctx.author.guild_permissions.administrator
+    
+    if not (is_staff or is_admin):
+        await ctx.send("❌ **Acesso restrito!**\nApenas membros da equipe podem usar este comando.", ephemeral=True)
+        return
+    
+    # Deferir resposta para comandos slash (evita timeout)
+    if hasattr(ctx, 'interaction') and ctx.interaction:
+        await ctx.interaction.response.defer(ephemeral=True)
+    
+    try:
+        # Carregar dados
+        data = load_json(GIVEAWAYS_FILE, {"giveaways": {}})
+        
+        # Validar ID
+        if message_id not in data["giveaways"]:
+            response = "❌ **Giveaway não encontrado!**\nVerifique o ID da mensagem."
+            if hasattr(ctx, 'interaction') and ctx.interaction:
+                await ctx.interaction.followup.send(response, ephemeral=True)
+            else:
+                await ctx.send(response)
+            return
+        
+        giveaway = data["giveaways"][message_id]
+        
+        # Verificar se está finalizado
+        if giveaway.get("active", True):
+            response = "⚠️ **Este giveaway ainda está ativo!**\nVocê só pode fazer reroll em giveaways finalizados."
+            if hasattr(ctx, 'interaction') and ctx.interaction:
+                await ctx.interaction.followup.send(response, ephemeral=True)
+            else:
+                await ctx.send(response)
+            return
+            
+        # Executar a função de reroll existente
+        await reroll_giveaway(message_id, giveaway, data)
+        
+        response = f"✅ **Reroll executado com sucesso!**\nUm novo vencedor foi selecionado no canal <#{giveaway['channel_id']}>."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
+            
+    except Exception as e:
+        error_msg = f"❌ **Erro ao processar comando:** {str(e)}"
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(error_msg, ephemeral=True)
+        else:
+            await ctx.send(error_msg)
 
 @bot.tree.command(name="paineltiers", description="Define o painel de tiers em um canal específico")
 @app_commands.describe(channel="Canal onde o painel de tiers será enviado")
