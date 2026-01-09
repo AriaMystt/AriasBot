@@ -1947,19 +1947,37 @@ async def calculadora(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=CalculatorView(), ephemeral=True)
 
+# ======================
+# COMANDO DE REROLL
+# ======================
+
 @bot.tree.command(name="giveaway_reroll", description="Realiza um novo sorteio para um giveaway finalizado.")
 @app_commands.describe(message_id="O ID da mensagem do giveaway para re-sortear")
 @app_commands.checks.has_permissions(administrator=True)
 async def giveaway_reroll(interaction: discord.Interaction, message_id: str):
-    # Carregar dados dos giveaways
+    # Carregar dados dos giveaways com segurança
     data = load_json(GIVEAWAYS_FILE, [])
     
-    # Encontrar o giveaway pelo message_id
-    giveaway = next((g for g in data if g["message_id"] == int(message_id)), None)
+    # Validar se 'data' é uma lista para evitar o erro de TypeError
+    if not isinstance(data, list):
+        return await interaction.response.send_message("❌ Erro: O banco de dados de giveaways está em um formato inválido.", ephemeral=True)
+
+    try:
+        msg_id_int = int(message_id)
+    except ValueError:
+        return await interaction.response.send_message("❌ O ID fornecido não é um número válido.", ephemeral=True)
+
+    # Buscar o giveaway na lista (tratando cada 'g' como dicionário)
+    giveaway = None
+    for g in data:
+        if isinstance(g, dict) and g.get("message_id") == msg_id_int:
+            giveaway = g
+            break
     
     if not giveaway:
-        return await interaction.response.send_message("❌ Giveaway não encontrado.", ephemeral=True)
+        return await interaction.response.send_message("❌ Giveaway não encontrado no banco de dados.", ephemeral=True)
     
+    # Verificar se o giveaway já terminou
     if not giveaway.get("ended", False):
         return await interaction.response.send_message("❌ Este giveaway ainda está ativo. Use este comando apenas em finalizados.", ephemeral=True)
 
@@ -1967,23 +1985,24 @@ async def giveaway_reroll(interaction: discord.Interaction, message_id: str):
     if not participants:
         return await interaction.response.send_message("❌ Não há participantes para realizar o re-sorteio.", ephemeral=True)
 
-    # Selecionar novo vencedor usando sua função de peso existente
-    new_winner_id = select_weighted_winner(participants) #
+    # Selecionar novo vencedor usando sua lógica de peso (weighted random)
+    new_winner_id = select_weighted_winner(participants)
     
     if not new_winner_id:
         return await interaction.response.send_message("❌ Não foi possível selecionar um vencedor.", ephemeral=True)
 
-    # Tentar obter o canal e a mensagem original para anunciar
+    # Anunciar o novo vencedor
     channel = interaction.guild.get_channel(giveaway["channel_id"])
     if channel:
         try:
-            msg = await channel.fetch_message(int(message_id))
+            # Tentar enviar no canal original
             await channel.send(f"🎉 **Reroll!** O novo vencedor de **{giveaway['name']}** é <@{new_winner_id}>! Parabéns!")
             await interaction.response.send_message(f"✅ Re-sorteio realizado! Novo vencedor: <@{new_winner_id}>", ephemeral=True)
         except Exception:
-            await interaction.response.send_message(f"🎉 O novo vencedor é <@{new_winner_id}>!", ephemeral=False)
+            # Fallback caso o bot não tenha permissão no canal
+            await interaction.response.send_message(f"🎉 O novo vencedor do sorteio é <@{new_winner_id}>!", ephemeral=False)
     else:
-        await interaction.response.send_message(f"🎉 O novo vencedor é <@{new_winner_id}>!", ephemeral=False)
+        await interaction.response.send_message(f"🎉 O novo vencedor do sorteio é <@{new_winner_id}>!", ephemeral=False)
 
 @bot.tree.command(name="tiers", description="Mostra todos os tiers disponíveis e seus benefícios")
 async def tiers(interaction: discord.Interaction):
