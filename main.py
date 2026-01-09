@@ -1947,6 +1947,43 @@ async def calculadora(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=CalculatorView(), ephemeral=True)
 
+@bot.tree.command(name="giveaway_reroll", description="Realiza um novo sorteio para um giveaway finalizado.")
+@app_commands.describe(message_id="O ID da mensagem do giveaway para re-sortear")
+@app_commands.checks.has_permissions(administrator=True)
+async def giveaway_reroll(interaction: discord.Interaction, message_id: str):
+    # Carregar dados dos giveaways
+    data = load_json(GIVEAWAYS_FILE, [])
+    
+    # Encontrar o giveaway pelo message_id
+    giveaway = next((g for g in data if g["message_id"] == int(message_id)), None)
+    
+    if not giveaway:
+        return await interaction.response.send_message("❌ Giveaway não encontrado.", ephemeral=True)
+    
+    if not giveaway.get("ended", False):
+        return await interaction.response.send_message("❌ Este giveaway ainda está ativo. Use este comando apenas em finalizados.", ephemeral=True)
+
+    participants = giveaway.get("participants", {})
+    if not participants:
+        return await interaction.response.send_message("❌ Não há participantes para realizar o re-sorteio.", ephemeral=True)
+
+    # Selecionar novo vencedor usando sua função de peso existente
+    new_winner_id = select_weighted_winner(participants) #
+    
+    if not new_winner_id:
+        return await interaction.response.send_message("❌ Não foi possível selecionar um vencedor.", ephemeral=True)
+
+    # Tentar obter o canal e a mensagem original para anunciar
+    channel = interaction.guild.get_channel(giveaway["channel_id"])
+    if channel:
+        try:
+            msg = await channel.fetch_message(int(message_id))
+            await channel.send(f"🎉 **Reroll!** O novo vencedor de **{giveaway['name']}** é <@{new_winner_id}>! Parabéns!")
+            await interaction.response.send_message(f"✅ Re-sorteio realizado! Novo vencedor: <@{new_winner_id}>", ephemeral=True)
+        except Exception:
+            await interaction.response.send_message(f"🎉 O novo vencedor é <@{new_winner_id}>!", ephemeral=False)
+    else:
+        await interaction.response.send_message(f"🎉 O novo vencedor é <@{new_winner_id}>!", ephemeral=False)
 
 @bot.tree.command(name="tiers", description="Mostra todos os tiers disponíveis e seus benefícios")
 async def tiers(interaction: discord.Interaction):
