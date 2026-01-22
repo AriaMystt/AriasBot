@@ -2114,7 +2114,7 @@ async def comprar(interaction: discord.Interaction):
 
 CATEGORIA_TICKETS_FECHADOS_ID = 1449319381422051400  # bota o ID real aqui
 
-@commands.command(name="limpartickets")
+@commands.command(name="limparticketsfechados")
 @commands.has_permissions(administrator=True)
 async def limpar_tickets(ctx):
     guild = ctx.guild
