@@ -2112,6 +2112,39 @@ async def comprar(interaction: discord.Interaction):
 # COMANDOS ADMINISTRATIVOS (MANTIDOS)
 # ======================
 
+CATEGORIA_TICKETS_FECHADOS_ID = 1449319381422051400  # bota o ID real aqui
+
+@commands.command(name="limpartickets")
+@commands.has_permissions(administrator=True)
+async def limpar_tickets(ctx):
+    guild = ctx.guild
+
+    categoria = guild.get_channel(CATEGORIA_TICKETS_FECHADOS_ID)
+
+    if not categoria or not isinstance(categoria, discord.CategoryChannel):
+        await ctx.send("ID da categoria inválido. Isso aqui não é uma categoria.")
+        return
+
+    canais = categoria.channels
+
+    if not canais:
+        await ctx.send("Nada pra limpar.")
+        return
+
+    await ctx.send(f"🧹 apagando **{len(canais)}** tickets fechados...")
+
+    deletados = 0
+
+    for canal in canais:
+        try:
+            await canal.delete(reason=f"Limpeza de tickets fechados por {ctx.author}")
+            deletados += 1
+        except Exception as e:
+            await ctx.send(f"não consegui apagar `{canal.name}`: `{e}`")
+
+    await ctx.send(f"**{deletados}** Tickets foram deletados.")
+
+
 @bot.hybrid_command(name="painelcompras", description="Envia o painel de compras em um canal específico")
 @app_commands.describe(canal="Canal onde enviar o painel (opcional)")
 @commands.has_permissions(administrator=True)
