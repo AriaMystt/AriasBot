@@ -339,18 +339,26 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
                     )
                     return
             
-            # Calcular preço com desconto
+            # Obter tier do usuário
+            user_tier, tier_discount = get_user_tier(interaction.user.id)
+            
+            # Calcular preço: base -> tier discount -> discount code
             valor_base = quantidade * ROBUX_RATE
-            valor_final = apply_discount(valor_base, discount_percentage)
+            valor_com_tier = valor_base * (1 - tier_discount)
+            valor_final = apply_discount(valor_com_tier, discount_percentage)
             
             # Armazenar valores no modal para uso posterior
             self.quantidade_robux = quantidade
             self.discount_code_used = discount_code.upper() if discount_valid else ""
             self.discount_percentage = discount_percentage
+            self.user_tier = user_tier
+            self.tier_discount = tier_discount
+            self.valor_base = valor_base
+            self.valor_com_tier = valor_com_tier
             self.valor_final = valor_final
             
             # Criar o ticket
-            await self.criar_ticket(interaction, "robux", quantidade, discount_code if discount_valid else None, valor_final)
+            await self.criar_ticket(interaction, "robux", quantidade, discount_code if discount_valid else None, valor_final, user_tier, tier_discount, valor_base, valor_com_tier)
             
         except ValueError:
             await interaction.response.send_message(
@@ -358,7 +366,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
                 ephemeral=True
             )
     
-    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, quantidade: int, discount_code: str = None, valor_final: float = None):
+    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, quantidade: int, discount_code: str = None, valor_final: float = None, user_tier: str = None, tier_discount: float = 0, valor_base: float = None, valor_com_tier: float = None):
         """Cria um ticket para compra de Robux."""
         data = load_json(TICKETS_FILE, {"usuarios": {}})
         uid = str(interaction.user.id)
@@ -403,9 +411,15 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
             "quantidade": quantidade
         }
         
-        if discount_code:
-            ticket_data["discount_code"] = discount_code.upper()
-            ticket_data["discount_percentage"] = getattr(self, 'discount_percentage', 0)
+        if discount_code or user_tier:
+            if discount_code:
+                ticket_data["discount_code"] = discount_code.upper()
+                ticket_data["discount_percentage"] = getattr(self, 'discount_percentage', 0)
+            if user_tier:
+                ticket_data["user_tier"] = user_tier
+                ticket_data["tier_discount"] = tier_discount
+            ticket_data["valor_base"] = valor_base
+            ticket_data["valor_com_tier"] = valor_com_tier
             ticket_data["valor_final"] = valor_final
         
         data["usuarios"][uid]["tickets"].append(ticket_data)
@@ -420,6 +434,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
             **📋 INFORMAÇÕES DO SEU ATENDIMENTO:**
             • **Tipo:** {tipo_compra} {emoji_tipo}
             • **Quantidade:** {quantidade:,} Robux
+            • **Seu Tier:** {user_tier} {'(' + ('Sem desconto' if tier_discount == 0 else f'{tier_discount*100:.0f}% desconto') + ')' if user_tier else ''}
             • **Ticket:** #{channel.name}
             • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
             • **Status:** 🔵 **EM ANDAMENTO**
@@ -434,12 +449,19 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
         )
         
         # Adicionar valor em reais calculado
-        if discount_code and valor_final is not None:
+        if (discount_code or tier_discount > 0) and valor_final is not None:
             valor_reais = valor_final
             valor_original = quantidade * ROBUX_RATE
+            
+            discount_text = ""
+            if tier_discount > 0:
+                discount_text += f"🏆 **Tier {user_tier}:** {tier_discount*100:.0f}% desconto\n"
+            if discount_code:
+                discount_text += f"🎟️ **Código:** `{discount_code.upper()}` ({getattr(self, 'discount_percentage', 0)}% desconto)"
+            
             embed_ticket.add_field(
-                name="💰 **VALOR COM DESCONTO**",
-                value=f"```💵 R$ {valor_reais:,.2f}```\n~~R$ {valor_original:,.2f}~~\n🎟️ **Código:** `{discount_code.upper()}`",
+                name="💰 **VALOR FINAL**",
+                value=f"```💵 R$ {valor_reais:,.2f}```\n~~R$ {valor_original:,.2f}~~\n{discount_text}",
                 inline=True
             )
         else:
@@ -554,6 +576,9 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
         data = load_json(TICKETS_FILE, {"usuarios": {}})
         uid = str(interaction.user.id)
 
+        # Obter tier do usuário
+        user_tier, tier_discount = get_user_tier(interaction.user.id)
+
         if uid in data["usuarios"] and data["usuarios"][uid].get("ticket_aberto"):
             await interaction.response.send_message(
                 "🔄 **Você já tem um ticket aberto!**\n"
@@ -592,7 +617,9 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             "criado_em": datetime.now(GMT_MINUS_3).isoformat(),
             "cliente_nome": user.name,
             "jogo": jogo,
-            "gamepass": gamepass
+            "gamepass": gamepass,
+            "user_tier": user_tier,
+            "tier_discount": tier_discount
         }
         
         if discount_code:
@@ -612,6 +639,7 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             • **Tipo:** {tipo_compra} {emoji_tipo}
             • **Jogo:** {jogo}
             • **Gamepass:** {gamepass}
+            • **Seu Tier:** {user_tier} {'(' + ('Sem desconto' if tier_discount == 0 else f'{tier_discount*100:.0f}% desconto') + ')' if user_tier else ''}
             • **Ticket:** #{channel.name}
             • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
             • **Status:** 🔵 **EM ANDAMENTO**
