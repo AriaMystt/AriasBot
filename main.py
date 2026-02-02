@@ -97,7 +97,9 @@ def get_user_tier(user_id):
 def get_total_discount(member: discord.Member):
     """Retorna o desconto total do usuário incluindo tier e boost."""
     tier_name, tier_discount = get_user_tier(member.id)
-    boost_discount = min(BOOST_PER_BOOST * member.guild.premium_subscription_count, BOOST_DISCOUNT) if member.premium_since else 0.0
+    # Count personal boosts
+    boost_count = sum(1 for sub in member.guild.premium_subscriptions if sub.user.id == member.id)
+    boost_discount = min(BOOST_PER_BOOST * boost_count, BOOST_DISCOUNT) if boost_count > 0 else 0.0
     total_discount = tier_discount + boost_discount
     return tier_name, total_discount, boost_discount
 
@@ -2314,7 +2316,7 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
         Como **booster ativo**, você recebe **descontos exclusivos** em todas as nossas compras!
         
         **🎁 DESCONTOS ESPECIAIS:**
-        • **+1% de desconto por boost do servidor**
+        • **+1% de desconto por boost pessoal**
         • **Máximo de +5% adicional**
         • **Aplicado automaticamente em todas as compras**
         
@@ -2323,14 +2325,14 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
         color=discord.Color.purple()
     )
     
-    # Get current server boost count
+    # Get current server boost count for reference
     boost_count = ctx.guild.premium_subscription_count
     current_boost_discount = min(BOOST_PER_BOOST * boost_count, BOOST_DISCOUNT)
     
     embed.add_field(
         name=f"🔥 **SERVIDOR ATUAL: {boost_count} BOOST{'S' if boost_count != 1 else ''}**",
         value=f"""
-        **Desconto Atual:** +{current_boost_discount*100:.0f}%
+        **Desconto Máximo Atual:** +{current_boost_discount*100:.0f}%
         **Tier Atual:** {ctx.guild.premium_tier or 0}
         """,
         inline=False
@@ -2339,7 +2341,7 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
     embed.add_field(
         name="💰 **COMO FUNCIONA?**",
         value="""
-        • O desconto cresce com cada boost do servidor
+        • O desconto cresce com cada boost que você dá
         • Combina com seus descontos de tier
         • Aplicado em Robux e Gamepass
         • Renovado automaticamente
