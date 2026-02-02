@@ -2310,7 +2310,6 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
     embed = discord.Embed(
         title="🚀 **BENEFÍCIOS PARA BOOSTERS** 🚀",
         description="""
-        **💎 AGRADECEMOS SEU APOIO AO SERVIDOR! 💎**
         
         Como **booster ativo**, você recebe **descontos exclusivos** em todas as nossas compras!
         
