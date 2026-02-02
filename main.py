@@ -2319,8 +2319,6 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
         • **+1% de desconto por boost que você dá**
         • **Máximo de +5% adicional**
         • **Aplicado automaticamente em todas as compras**
-        
-        **📊 EXEMPLO:**
         """,
         color=discord.Color.purple()
     )
@@ -2330,10 +2328,11 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
     current_boost_discount = min(BOOST_PER_BOOST * boost_count, BOOST_DISCOUNT)
     
     embed.add_field(
-        name=f"🔥 **SERVIDOR ATUAL: {boost_count} BOOST{'S' if boost_count != 1 else ''}**",
+        name="🎯 **EXEMPLOS DE DESCONTO**",
         value=f"""
-        **Desconto Máximo Atual:** +{current_boost_discount*100:.0f}%
-        **Tier Atual:** {ctx.guild.premium_tier or 0}
+        • **1 Boost:** +{BOOST_PER_BOOST*100:.0f}% desconto
+        • **2 Boosts:** +{min(BOOST_PER_BOOST*2*100, BOOST_DISCOUNT*100):.0f}% desconto
+        • **5+ Boosts:** +{BOOST_DISCOUNT*100:.0f}% desconto (máximo)
         """,
         inline=False
     )
@@ -2345,16 +2344,6 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
         • Combina com seus descontos de tier
         • Aplicado em Robux e Gamepass
         • Renovado automaticamente
-        """,
-        inline=True
-    )
-    
-    embed.add_field(
-        name="🎯 **EXEMPLOS DE DESCONTO**",
-        value=f"""
-        • **1 Boost:** +{BOOST_PER_BOOST*100:.0f}% desconto
-        • **2 Boosts:** +{min(BOOST_PER_BOOST*2*100, BOOST_DISCOUNT*100):.0f}% desconto
-        • **5+ Boosts:** +{BOOST_DISCOUNT*100:.0f}% desconto (máximo)
         """,
         inline=True
     )
