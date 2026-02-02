@@ -2316,7 +2316,7 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
         Como **booster ativo**, você recebe **descontos exclusivos** em todas as nossas compras!
         
         **🎁 DESCONTOS ESPECIAIS:**
-        • **+1% de desconto por boost pessoal**
+        • **+1% de desconto por boost que você dá**
         • **Máximo de +5% adicional**
         • **Aplicado automaticamente em todas as compras**
         
