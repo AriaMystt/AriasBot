@@ -34,6 +34,8 @@ DISCOUNT_ANNOUNCEMENT_CHANNEL_ID = 1449310128619651194  # Use LOG_CHANNEL_ID for
 # Taxas de Conversão
 ROBUX_RATE = 0.035  # 1 Robux = R$ 0,035
 ROBLOX_TAX = 0.30   # Roblox pega 30% da gamepass
+BOOST_DISCOUNT = 0.05  # 5% maximum discount for server boosters
+BOOST_PER_BOOST = 0.01  # 1% discount per server boost
 
 # Arquivos JSON
 TICKETS_FILE = "tickets.json"
@@ -91,6 +93,13 @@ def get_user_tier(user_id):
     
     # Fallback para o primeiro tier
     return TIERS[0]["name"], TIERS[0]["discount"]
+
+def get_total_discount(member: discord.Member):
+    """Retorna o desconto total do usuário incluindo tier e boost."""
+    tier_name, tier_discount = get_user_tier(member.id)
+    boost_discount = min(BOOST_PER_BOOST * member.guild.premium_subscription_count, BOOST_DISCOUNT) if member.premium_since else 0.0
+    total_discount = tier_discount + boost_discount
+    return tier_name, total_discount, boost_discount
 
 def get_tier_by_spent(spent):
     """Retorna o tier baseado no total gasto."""
@@ -367,7 +376,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
                     return
             
             # Obter tier do usuário
-            user_tier, tier_discount = get_user_tier(interaction.user.id)
+            user_tier, tier_discount, boost_discount = get_total_discount(interaction.user)
             
             # Calcular preço: base -> tier discount -> discount code
             valor_base = quantidade * ROBUX_RATE
@@ -380,12 +389,13 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
             self.discount_percentage = discount_percentage
             self.user_tier = user_tier
             self.tier_discount = tier_discount
+            self.boost_discount = boost_discount
             self.valor_base = valor_base
             self.valor_com_tier = valor_com_tier
             self.valor_final = valor_final
             
             # Criar o ticket
-            await self.criar_ticket(interaction, "robux", quantidade, discount_code if discount_valid else None, valor_final, user_tier, tier_discount, valor_base, valor_com_tier)
+            await self.criar_ticket(interaction, "robux", quantidade, discount_code if discount_valid else None, valor_final, user_tier, tier_discount, valor_base, valor_com_tier, boost_discount)
             
         except ValueError:
             await interaction.response.send_message(
@@ -393,7 +403,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
                 ephemeral=True
             )
     
-    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, quantidade: int, discount_code: str = None, valor_final: float = None, user_tier: str = None, tier_discount: float = 0, valor_base: float = None, valor_com_tier: float = None):
+    async def criar_ticket(self, interaction: discord.Interaction, tipo: str, quantidade: int, discount_code: str = None, valor_final: float = None, user_tier: str = None, tier_discount: float = 0, valor_base: float = None, valor_com_tier: float = None, boost_discount: float = 0):
         """Cria um ticket para compra de Robux."""
         data = load_json(TICKETS_FILE, {"usuarios": {}})
         uid = str(interaction.user.id)
@@ -445,6 +455,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
             if user_tier:
                 ticket_data["user_tier"] = user_tier
                 ticket_data["tier_discount"] = tier_discount
+                ticket_data["boost_discount"] = boost_discount
             ticket_data["valor_base"] = valor_base
             ticket_data["valor_com_tier"] = valor_com_tier
             ticket_data["valor_final"] = valor_final
@@ -461,7 +472,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
             **📋 INFORMAÇÕES DO SEU ATENDIMENTO:**
             • **Tipo:** {tipo_compra} {emoji_tipo}
             • **Quantidade:** {quantidade:,} Robux
-            • **Seu Tier:** {user_tier} {'(' + ('Sem desconto' if tier_discount == 0 else f'{tier_discount*100:.0f}% desconto') + ')' if user_tier else ''}
+            • **Seu Tier:** {user_tier} ({'Sem desconto' if tier_discount - boost_discount == 0 else f'{(tier_discount - boost_discount)*100:.0f}% desconto'}){' + ' + f'{boost_discount*100:.0f}% boost' if boost_discount > 0 else ''}
             • **Ticket:** #{channel.name}
             • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
             • **Status:** 🔵 **EM ANDAMENTO**
@@ -604,7 +615,7 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
         uid = str(interaction.user.id)
 
         # Obter tier do usuário
-        user_tier, tier_discount = get_user_tier(interaction.user.id)
+        user_tier, tier_discount, boost_discount = get_total_discount(interaction.user)
 
         if uid in data["usuarios"] and data["usuarios"][uid].get("ticket_aberto"):
             await interaction.response.send_message(
@@ -646,7 +657,8 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             "jogo": jogo,
             "gamepass": gamepass,
             "user_tier": user_tier,
-            "tier_discount": tier_discount
+            "tier_discount": tier_discount,
+            "boost_discount": boost_discount
         }
         
         if discount_code:
@@ -666,7 +678,7 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             • **Tipo:** {tipo_compra} {emoji_tipo}
             • **Jogo:** {jogo}
             • **Gamepass:** {gamepass}
-            • **Seu Tier:** {user_tier} {'(' + ('Sem desconto' if tier_discount == 0 else f'{tier_discount*100:.0f}% desconto') + ')' if user_tier else ''}
+            • **Seu Tier:** {user_tier} ({'Sem desconto' if tier_discount - boost_discount == 0 else f'{(tier_discount - boost_discount)*100:.0f}% desconto'}){' + ' + f'{boost_discount*100:.0f}% boost' if boost_discount > 0 else ''}
             • **Ticket:** #{channel.name}
             • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
             • **Status:** 🔵 **EM ANDAMENTO**
@@ -2023,7 +2035,13 @@ async def tiers(interaction: discord.Interaction):
     )
     
     embed.add_field(
-        name="💡 **COMO FUNCIONA?**",
+        name="� **DESCONTO PARA BOOSTERS**",
+        value=f"• Servidores boosters recebem **+{BOOST_DISCOUNT*100:.0f}% desconto adicional**\n• Agradecemos seu apoio! 💎",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="�💡 **COMO FUNCIONA?**",
         value="""
         • Gasto total determina seu tier
         • Descontos são aplicados automaticamente
@@ -2119,7 +2137,13 @@ async def set_tier_panel(interaction: discord.Interaction, channel: discord.Text
     )
     
     embed.add_field(
-        name="💡 **COMO FUNCIONA?**",
+        name="� **DESCONTO PARA BOOSTERS**",
+        value=f"• Servidores boosters recebem **+{BOOST_DISCOUNT*100:.0f}% desconto adicional**\n• Agradecemos seu apoio! 💎",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="�💡 **COMO FUNCIONA?**",
         value="""
         • Gasto total determina seu tier
         • Descontos são aplicados automaticamente
