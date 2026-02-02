@@ -224,8 +224,8 @@ def apply_discount(price: float, discount_percentage: int) -> float:
     return price * (1 - discount_percentage / 100)
 
 
-async def decrement_discount_uses(code: str, interaction_or_guild) -> bool:
-    """Decrementa as uses de um código de desconto. Retorna True se expirou."""
+async def decrement_discount_uses(code: str, interaction_or_guild, amount_spent: float = 0.0, user_id: str = None) -> bool:
+    """Decrementa as uses de um código de desconto e adiciona o valor gasto. Retorna True se expirou."""
     if not code:
         return False
     
@@ -234,6 +234,12 @@ async def decrement_discount_uses(code: str, interaction_or_guild) -> bool:
     
     if code_upper in codes:
         codes[code_upper]["uses"] = max(0, codes[code_upper].get("uses", 0) - 1)
+        codes[code_upper]["spent"] = codes[code_upper].get("spent", 0.0) + amount_spent
+        if user_id:
+            if "used_by" not in codes[code_upper]:
+                codes[code_upper]["used_by"] = []
+            if user_id not in codes[code_upper]["used_by"]:
+                codes[code_upper]["used_by"].append(user_id)
         save_json(DISCOUNT_CODES_FILE, codes)
         
         # Verificar se expirou
@@ -258,6 +264,11 @@ async def announce_code_expiration(interaction_or_guild, code: str, motive: str)
         if not channel:
             return
         
+        codes = load_json(DISCOUNT_CODES_FILE, {})
+        code_data = codes.get(code.upper(), {})
+        user_id = code_data.get("user_id")
+        spent = code_data.get("spent", 0.0)
+        
         embed = discord.Embed(
             title="🎟️ **CÓDIGO DE DESCONTO EXPIRADO!**",
             description=f"""
@@ -269,6 +280,22 @@ async def announce_code_expiration(interaction_or_guild, code: str, motive: str)
             color=discord.Color.red(),
             timestamp=datetime.now(GMT_MINUS_3)
         )
+        
+        if user_id:
+            user = guild.get_member(int(user_id))
+            if user:
+                embed.add_field(
+                    name="👤 **DONO DO CÓDIGO**",
+                    value=user.mention,
+                    inline=True
+                )
+        
+        if spent > 0:
+            embed.add_field(
+                name="💰 **TOTAL GASTO**",
+                value=f"R$ {spent:,.2f}",
+                inline=True
+            )
         
         embed.set_footer(text="Sistema de Descontos AriasBot")
         
@@ -943,7 +970,7 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
 
             # Decrementar uses do código de desconto se foi usado
             if "discount_code" in self.ticket:
-                await decrement_discount_uses(self.ticket["discount_code"], interaction)
+                await decrement_discount_uses(self.ticket["discount_code"], interaction, valor_pago, self.uid)
 
             compras = load_json(PURCHASE_COUNT_FILE, {})
             user_compras = compras.get(self.uid, {"count": 0, "total": 0.0})
@@ -2388,6 +2415,68 @@ async def sync(ctx):
         await ctx.send("✅ Comandos slash sincronizados com sucesso!")
 
 
+@bot.hybrid_command(name="createcode", description="Cria um novo código de desconto para um usuário (apenas admin)")
+@commands.has_permissions(administrator=True)
+@app_commands.describe(
+    user="Usuário que receberá o código",
+    codename="Nome do código de desconto",
+    percentage="Porcentagem de desconto (ex: 10)",
+    uses="Número de uses (ex: 5)"
+)
+async def createcode(ctx, user: discord.User, codename: str, percentage: int, uses: int):
+    """Cria um novo código de desconto para um usuário."""
+    # Defer for slash commands
+    if hasattr(ctx, 'interaction') and ctx.interaction:
+        await ctx.interaction.response.defer(ephemeral=True)
+    
+    codes = load_json(DISCOUNT_CODES_FILE, {})
+    code_upper = codename.upper().strip()
+    
+    if code_upper in codes:
+        response = f"❌ **Código já existe!**\nO código `{codename}` já está cadastrado no sistema."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
+        return
+    
+    if percentage <= 0 or percentage > 100:
+        response = "❌ **Porcentagem inválida!**\nA porcentagem deve ser entre 1 e 100."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
+        return
+    
+    if uses <= 0:
+        response = "❌ **Uses inválido!**\nO número de uses deve ser maior que 0."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
+        return
+    
+    # Criar o código
+    codes[code_upper] = {
+        "user_id": str(user.id),
+        "percentage": percentage,
+        "uses": uses,
+        "spent": 0.0,
+        "created_at": datetime.now(GMT_MINUS_3).isoformat(),
+        "created_by": ctx.author.id
+    }
+    save_json(DISCOUNT_CODES_FILE, codes)
+    
+    response = f"✅ **Código criado com sucesso!**\n" \
+               f"**Código:** `{code_upper}`\n" \
+               f"**Usuário:** {user.mention}\n" \
+               f"**Desconto:** {percentage}%\n" \
+               f"**Uses:** {uses}"
+    if hasattr(ctx, 'interaction') and ctx.interaction:
+        await ctx.interaction.followup.send(response, ephemeral=True)
+    else:
+        await ctx.send(response)
+
 @bot.hybrid_command(name="expirecode", description="Expira manualmente um código de desconto (apenas staff)")
 @commands.has_permissions(administrator=True)
 @app_commands.describe(
@@ -2436,6 +2525,70 @@ async def expirecode(ctx, codename: str, motive: str):
             await ctx.interaction.followup.send(response, ephemeral=True)
         else:
             await ctx.send(response)
+
+
+@bot.hybrid_command(name="meucodigo", description="Mostra as estatísticas do seu código de desconto")
+async def meucodigo(ctx):
+    """Mostra as estatísticas do código de desconto do usuário."""
+    # Defer for slash commands
+    if hasattr(ctx, 'interaction') and ctx.interaction:
+        await ctx.interaction.response.defer(ephemeral=True)
+    
+    codes = load_json(DISCOUNT_CODES_FILE, {})
+    user_id = str(ctx.author.id)
+    
+    # Encontrar o código do usuário
+    user_code = None
+    code_name = None
+    for code, data in codes.items():
+        if data.get("user_id") == user_id:
+            user_code = data
+            code_name = code
+            break
+    
+    if not user_code:
+        response = "❌ **Você não possui um código de desconto!**\nEntre em contato com a equipe para solicitar um."
+        if hasattr(ctx, 'interaction') and ctx.interaction:
+            await ctx.interaction.followup.send(response, ephemeral=True)
+        else:
+            await ctx.send(response)
+        return
+    
+    embed = discord.Embed(
+        title="🎟️ **SEU CÓDIGO DE DESCONTO**",
+        description=f"**Código:** `{code_name}`",
+        color=discord.Color.blue(),
+        timestamp=datetime.now(GMT_MINUS_3)
+    )
+    
+    embed.add_field(
+        name="📊 **ESTATÍSTICAS**",
+        value=f"""
+        **Desconto:** {user_code.get('percentage', 0)}%
+        **Uses Restantes:** {user_code.get('uses', 0)}
+        **Total Gasto:** R$ {user_code.get('spent', 0.0):,.2f}
+        """,
+        inline=False
+    )
+    
+    created_at = user_code.get('created_at')
+    if created_at:
+        try:
+            created_dt = datetime.fromisoformat(created_at)
+            embed.add_field(
+                name="📅 **CRIADO EM**",
+                value=created_dt.strftime('%d/%m/%Y às %H:%M'),
+                inline=True
+            )
+        except:
+            pass
+    
+    embed.set_footer(text=f"Solicitado por {ctx.author.name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+    
+    if hasattr(ctx, 'interaction') and ctx.interaction:
+        await ctx.interaction.followup.send(embed=embed, ephemeral=True)
+    else:
+        await ctx.send(embed=embed)
 
 
 # ======================
