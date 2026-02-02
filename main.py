@@ -2299,6 +2299,78 @@ async def painelcalculadora(ctx, canal: discord.TextChannel = None):
     await ctx.send(embed=embed_confirma, ephemeral=True)
 
 
+@bot.hybrid_command(name="painelboosters", description="Envia o painel de benefícios para boosters")
+@app_commands.describe(canal="Canal onde enviar o painel (opcional)")
+@commands.has_permissions(administrator=True)
+async def painelboosters(ctx, canal: discord.TextChannel = None):
+    """Envia o painel de benefícios para boosters em um canal específico."""
+    if canal is None:
+        canal = ctx.channel
+    
+    embed = discord.Embed(
+        title="🚀 **BENEFÍCIOS PARA BOOSTERS** 🚀",
+        description="""
+        **💎 AGRADECEMOS SEU APOIO AO SERVIDOR! 💎**
+        
+        Como **booster ativo**, você recebe **descontos exclusivos** em todas as nossas compras!
+        
+        **🎁 DESCONTOS ESPECIAIS:**
+        • **+1% de desconto por boost do servidor**
+        • **Máximo de +5% adicional**
+        • **Aplicado automaticamente em todas as compras**
+        
+        **📊 EXEMPLO:**
+        """,
+        color=discord.Color.purple()
+    )
+    
+    # Get current server boost count
+    boost_count = ctx.guild.premium_subscription_count
+    current_boost_discount = min(BOOST_PER_BOOST * boost_count, BOOST_DISCOUNT)
+    
+    embed.add_field(
+        name=f"🔥 **SERVIDOR ATUAL: {boost_count} BOOST{'S' if boost_count != 1 else ''}**",
+        value=f"""
+        **Desconto Atual:** +{current_boost_discount*100:.0f}%
+        **Tier Atual:** {ctx.guild.premium_tier or 0}
+        """,
+        inline=False
+    )
+    
+    embed.add_field(
+        name="💰 **COMO FUNCIONA?**",
+        value="""
+        • O desconto cresce com cada boost do servidor
+        • Combina com seus descontos de tier
+        • Aplicado em Robux e Gamepass
+        • Renovado automaticamente
+        """,
+        inline=True
+    )
+    
+    embed.add_field(
+        name="🎯 **EXEMPLOS DE DESCONTO**",
+        value=f"""
+        • **1 Boost:** +{BOOST_PER_BOOST*100:.0f}% desconto
+        • **2 Boosts:** +{min(BOOST_PER_BOOST*2*100, BOOST_DISCOUNT*100):.0f}% desconto
+        • **5+ Boosts:** +{BOOST_DISCOUNT*100:.0f}% desconto (máximo)
+        """,
+        inline=True
+    )
+    
+    embed.set_footer(text="Obrigado por impulsionar nossa comunidade! ✨")
+    embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
+
+    await canal.send(embed=embed)
+    
+    embed_confirma = discord.Embed(
+        title="✅ **PAINEL DE BOOSTERS ENVIADO!**",
+        description=f"✨ **Perfeito!** O painel de benefícios para boosters foi enviado para {canal.mention}!",
+        color=discord.Color.purple()
+    )
+    await ctx.send(embed=embed_confirma, ephemeral=True)
+
+
 @bot.hybrid_command(name="limpartickets", description="Limpa todos os dados de tickets")
 @commands.has_permissions(administrator=True)
 async def limpartickets(ctx):
