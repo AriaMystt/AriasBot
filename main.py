@@ -3246,7 +3246,4 @@ async def on_member_join(member: discord.Member):
 # ======================
 
 if __name__ == "__main__":
-    print("🚀 Iniciando bot...")
-    print("🔧 Carregando configurações...")
-    print("💾 Verificando arquivos JSON...")
     bot.run(TOKEN)
