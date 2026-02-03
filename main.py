@@ -2052,12 +2052,6 @@ async def tiers(interaction: discord.Interaction):
     )
     
     embed.add_field(
-        name="<:boost:1468049708852187198>**DESCONTO PARA BOOSTERS**",
-        value=f"<:star:1468051499195039775> Usuários boosters recebem **+1% desconto por boost pessoal** (máx. +{BOOST_DISCOUNT*100:.0f}%)\n<:star:1468051499195039775> Agradecemos seu apoio! 💎",
-        inline=False
-    )
-    
-    embed.add_field(
         name=":question: **COMO FUNCIONA?**",
         value="""
         <:star:1468051499195039775> Gasto total determina seu tier
