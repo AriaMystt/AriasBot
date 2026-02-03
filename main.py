@@ -54,6 +54,16 @@ TIERS = [
     {"name": "Elite", "min_spent": 250.0, "discount": 0.10},
 ]
 
+# Emojis Customizados
+ROBUX_EMOJI = "<:robux:1450373411087057078>"
+BOOST_EMOJI = "<:boost:1468049708852187198>"
+STAR_EMOJI = "<:star:1468051499195039775>"
+TILTED_HEART_EMOJI = "<a:tiltedhearth:1468051501065834647>"
+ALERT_EMOJI = "<a:alert:1468051504089927773>"
+STATS_EMOJI = "<:stats:1468051505780232324>"
+PIN_EMOJI = "<:pin:1468051507072073848>"
+VERIFY_EMOJI = "<a:verify:1468051508489752597>"
+
 # Sistema de Bonus de Entries para Giveaways
 GIVEAWAY_ROLE_BONUSES = {
     # Role ID: bonus entries
@@ -336,7 +346,7 @@ async def expire_discount_code(code: str, motive: str, interaction) -> bool:
 # MODAIS PARA COMPRAS (MANTIDO)
 # ======================
 
-class RobuxPurchaseModal(discord.ui.Modal, title="💎 Comprar Robux"):
+class RobuxPurchaseModal(discord.ui.Modal, title=f"{ROBUX_EMOJI} Comprar Robux"):
     quantidade = discord.ui.TextInput(
         label="🎯 Quantos Robux você quer comprar?",
         placeholder="Digite apenas números (ex: 1000, 5000, 10000)",
@@ -1106,7 +1116,7 @@ class CalculatorView(discord.ui.View):
     @discord.ui.button(
         label="Robux → Reais",
         style=discord.ButtonStyle.success,
-        emoji="💎"
+        emoji=ROBUX_EMOJI
     )
     async def robux_to_reais(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(RobuxToReaisModal())
@@ -1127,7 +1137,7 @@ class PurchaseView(discord.ui.View):
     @discord.ui.button(
         label="Comprar Robux",
         style=discord.ButtonStyle.success,
-        emoji="💎",
+        emoji=ROBUX_EMOJI,
         row=0
     )
     async def comprar_robux(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1772,8 +1782,8 @@ async def calcular(ctx, valor: str, tier: str = None):
                 inline=False
             )
             embed.add_field(
-                name="💎 **ROBUX QUE VOCÊ RECEBE**",
-                value=f"```💎 {robux_liquidos:,} Robux```",
+                name=f"{ROBUX_EMOJI} **ROBUX QUE VOCÊ RECEBE**",
+                value=f"```{ROBUX_EMOJI} {robux_liquidos:,} Robux```",
                 inline=True
             )
             embed.add_field(
@@ -1798,8 +1808,8 @@ async def calcular(ctx, valor: str, tier: str = None):
             )
             
             embed.add_field(
-                name="💎 **ROBUX DESEJADOS**",
-                value=f"```💎 {robux_liquidos:,} Robux```",
+                name=f"{ROBUX_EMOJI} **ROBUX DESEJADOS**",
+                value=f"```{ROBUX_EMOJI} {robux_liquidos:,} Robux```",
                 inline=False
             )
             embed.add_field(
@@ -1944,12 +1954,12 @@ async def loja(ctx):
     tier_distribution = "\n".join([f"• **{tier}:** {count} clientes (R$ {tier_revenue[tier]:,.2f})" for tier, count in sorted(tier_counts.items(), key=lambda x: x[1], reverse=True)])
     
     embed.add_field(
-        name="📈 **ESTATÍSTICAS GERAIS**",
+        name=f"{STATS_EMOJI} **ESTATÍSTICAS GERAIS**",
         value=f"""
         **🛍️ Total de Compras:** `{total_compras}`
         **💰 Faturamento Total:** `R$ {total_faturamento:,.2f}`
         **👥 Clientes Únicos:** `{clientes_unicos}`
-        **📊 Ticket Médio:** `R$ {avg_order_value:,.2f}`
+        **{STATS_EMOJI} Ticket Médio:** `R$ {avg_order_value:,.2f}`
         **💎 Valor Médio por Cliente:** `R$ {avg_customer_value:,.2f}`
         """,
         inline=False
@@ -2315,15 +2325,15 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
         canal = ctx.channel
     
     embed = discord.Embed(
-        title="🚀 **BENEFÍCIOS PARA BOOSTERS** 🚀",
+        title=f"{BOOST_EMOJI} **BENEFÍCIOS PARA BOOSTERS** {BOOST_EMOJI}",
         description="""
         
         Como **booster ativo**, você recebe **descontos exclusivos** em todas as nossas compras!
         
         **🎁 DESCONTOS ESPECIAIS:**
-        • **+1% de desconto por boost que você dá**
-        • **Máximo de +5% adicional**
-        • **Aplicado automaticamente em todas as compras**
+        {STAR_EMOJI} **+1% de desconto por boost que você dá**
+        {STAR_EMOJI} **Máximo de +5% adicional**
+        {STAR_EMOJI} **Aplicado automaticamente em todas as compras**
         """,
         color=discord.Color.purple()
     )
@@ -2335,9 +2345,9 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
     embed.add_field(
         name="🎯 **EXEMPLOS DE DESCONTO**",
         value=f"""
-        • **1 Boost:** +{BOOST_PER_BOOST*100:.0f}% desconto
-        • **2 Boosts:** +{min(BOOST_PER_BOOST*2*100, BOOST_DISCOUNT*100):.0f}% desconto
-        • **5+ Boosts:** +{BOOST_DISCOUNT*100:.0f}% desconto (máximo)
+        {STAR_EMOJI} **1 Boost:** +{BOOST_PER_BOOST*100:.0f}% desconto
+        {STAR_EMOJI} **2 Boosts:** +{min(BOOST_PER_BOOST*2*100, BOOST_DISCOUNT*100):.0f}% desconto
+        {STAR_EMOJI} **5+ Boosts:** +{BOOST_DISCOUNT*100:.0f}% desconto (máximo)
         """,
         inline=False
     )
@@ -2376,19 +2386,19 @@ async def painelcriador(ctx, canal: discord.TextChannel = None):
     
     embed = discord.Embed(
         title="🎥 Programa de Criadores de Conteúdo",
-        description="O Programa de Criadores de Conteúdo foi criado para apoiar quem divulga o servidor e a loja de forma ativa e consistente.\n\nCriadores aprovados recebem um **código exclusivo de desconto**, além de **comissões por cada compra realizada com o código**.\n\nA participação está sujeita à análise e aprovação da equipe.",
+        description="O Programa de Criadores de Conteúdo foi criado para apoiar quem divulga o servidor e a loja de forma ativa e consistente.\nCriadores aprovados recebem um **código exclusivo de desconto**, além de **comissões por cada compra realizada com o código**.\n\nA participação está sujeita à análise e aprovação da equipe.",
         color=10181046
     )
     
     embed.add_field(
-        name="🏷️ Criador Pequeno — Requisitos",
-        value="**TikTok**\n• Mínimo de **1.000 seguidores**\n• Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n• Conta ativa\n\n**YouTube**\n• Mínimo de **1.000 inscritos**\n• Vídeos recentes (últimos 30 dias)\n• Engajamento real",
+        name="**🏷️ Criador Pequeno - Requisitos**",
+        value="**<:tiktok:1468048762449690774>TikTok**\n• Mínimo de **1.000 seguidores**\n• Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n• Conta ativa\n**<:youtube:1468048759563751676> YouTube**\n• Mínimo de **1.000 inscritos**\n• Vídeos recentes (últimos 30 dias)\n• Engajamento real",
         inline=False
     )
     
     embed.add_field(
-        name="🏷️ Criador Grande — Requisitos",
-        value="**TikTok**\n• Mínimo de **10.000 seguidores**\n• Vídeos frequentes com **50.000+ visualizações**\n• Divulgação consistente\n\n**YouTube**\n• Mínimo de **10.000 inscritos**\n• Vídeos com **5.000+ visualizações** de forma recorrente\n• Público ativo e engajado",
+        name="**🏷️ Criador Grande - Requisitos**",
+        value="**<:tiktok:1468048762449690774>TikTok**\n• Mínimo de **10.000 seguidores**\n• Vídeos frequentes com **15.000+ visualizações**\n• Divulgação consistente\n**<:youtube:1468048759563751676> YouTube**\n• Mínimo de **10.000 inscritos**\n• Vídeos com **5.000+ visualizações** de forma recorrente\n• Público ativo e engajado",
         inline=False
     )
     
@@ -2399,14 +2409,8 @@ async def painelcriador(ctx, canal: discord.TextChannel = None):
     )
     
     embed.add_field(
-        name="🏷️ Tiers de Criadores",
-        value="• **Criador Pequeno**\n• **Criador Grande**\n\nA definição do tier é feita **manualmente pela equipe**.",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="⚠️ Regras gerais",
-        value="• Apenas **um código ativo** por criador\n• O criador define a **quantidade de usos** do código\n• O código pode ser removido por falta de divulgação, uso indevido, ou informações falsas\n• É proibido spam ou promessas fora do código",
+        name=f"{ALERT_EMOJI} Regras gerais",
+        value=f"{STAR_EMOJI} Apenas **um código ativo** por criador\n{STAR_EMOJI} O criador define a **quantidade de usos** do código\n{STAR_EMOJI} O código pode ser removido por falta de divulgação, uso indevido, ou informações falsas\n{STAR_EMOJI} É proibido spam ou promessas fora do código",
         inline=False
     )
     
@@ -2415,7 +2419,7 @@ async def painelcriador(ctx, canal: discord.TextChannel = None):
     await canal.send(embed=embed)
     
     embed_confirma = discord.Embed(
-        title="✅ **PAINEL DE CRIADORES ENVIADO!**",
+        title=f"{VERIFY_EMOJI} **PAINEL DE CRIADORES ENVIADO!**",
         description=f"✨ **Perfeito!** O painel de criadores de conteúdo foi enviado para {canal.mention}!",
         color=discord.Color.green()
     )
