@@ -447,7 +447,7 @@ class RobuxPurchaseModal(discord.ui.Modal, title=f"{ROBUX_EMOJI} Comprar Robux")
             name=f"{emoji_tipo}┃{user.name}-{tipo_compra}-{random.randint(100,999)}",
             category=category,
             overwrites=overwrites,
-            topic=f"🎫 Ticket de {tipo_compra} • Cliente: {user.name} • Quantidade: {quantidade:,} Robux • Aberto em: {datetime.now().strftime('%d/%m %H:%M')}"
+            topic=f"🎫 Ticket de {tipo_compra} <:star:1468051499195039775> Cliente: {user.name} <:star:1468051499195039775> Quantidade: {quantidade:,} Robux <:star:1468051499195039775> Aberto em: {datetime.now().strftime('%d/%m %H:%M')}"
         )
 
         data["usuarios"].setdefault(uid, {"tickets": [], "ticket_aberto": False})
@@ -482,12 +482,12 @@ class RobuxPurchaseModal(discord.ui.Modal, title=f"{ROBUX_EMOJI} Comprar Robux")
             ✨ **Olá {user.mention}!** Seja muito bem-vindo(a) ao seu ticket! ✨
             
             **📋 INFORMAÇÕES DO SEU ATENDIMENTO:**
-            • **Tipo:** {tipo_compra} {emoji_tipo}
-            • **Quantidade:** {quantidade:,} Robux
-            • **Seu Tier:** {user_tier} ({'Sem desconto' if tier_discount - boost_discount == 0 else f'{(tier_discount - boost_discount)*100:.0f}% desconto'}){' + ' + f'{boost_discount*100:.0f}% boost' if boost_discount > 0 else ''}
-            • **Ticket:** #{channel.name}
-            • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
-            • **Status:** 🔵 **EM ANDAMENTO**
+            <:star:1468051499195039775> **Tipo:** {tipo_compra} {emoji_tipo}
+            <:star:1468051499195039775> **Quantidade:** {quantidade:,} Robux
+            <:star:1468051499195039775> **Seu Tier:** {user_tier} ({'Sem desconto' if tier_discount - boost_discount == 0 else f'{(tier_discount - boost_discount)*100:.0f}% desconto'}){' + ' + f'{boost_discount*100:.0f}% boost' if boost_discount > 0 else ''}
+            <:star:1468051499195039775> **Ticket:** #{channel.name}
+            <:star:1468051499195039775> **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+            <:star:1468051499195039775> **Status:** 🔵 **EM ANDAMENTO**
             
             **🎯 PRÓXIMOS PASSOS:**
             1. **Aguarde nossa equipe** - Vamos te atender rapidinho! ⚡
@@ -529,13 +529,13 @@ class RobuxPurchaseModal(discord.ui.Modal, title=f"{ROBUX_EMOJI} Comprar Robux")
         )
         
         embed_ticket.set_footer(
-            text=f"Atendimento VIP para {user.name} • Obrigado por escolher nossa loja!",
+            text=f"Atendimento VIP para {user.name} <:star:1468051499195039775> Obrigado por escolher nossa loja!",
             icon_url=user.avatar.url if user.avatar else None
         )
         embed_ticket.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
 
         await channel.send(
-            content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>\n\n**📋 DETALHES DA COMPRA:**\n• **Tipo:** {tipo_compra}\n• **Quantidade:** {quantidade:,} Robux",
+            content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>\n\n**📋 DETALHES DA COMPRA:**\n<:star:1468051499195039775> **Tipo:** {tipo_compra}\n<:star:1468051499195039775> **Quantidade:** {quantidade:,} Robux",
             embed=embed_ticket,
             view=TicketButtons()
         )
@@ -546,11 +546,11 @@ class RobuxPurchaseModal(discord.ui.Modal, title=f"{ROBUX_EMOJI} Comprar Robux")
             🎉 **Perfeito! Seu ticket foi criado e já está pronto!**
             
             **📋 DETALHES:**
-            • **Ticket:** {channel.mention}
-            • **Tipo:** {tipo_compra} {emoji_tipo}
-            • **Quantidade:** {quantidade:,} Robux
-            • **Valor estimado:** R$ {valor_reais:,.2f}
-            • **Aberto em:** {datetime.now().strftime('%H:%M')}
+            <:star:1468051499195039775> **Ticket:** {channel.mention}
+            <:star:1468051499195039775> **Tipo:** {tipo_compra} {emoji_tipo}
+            <:star:1468051499195039775> **Quantidade:** {quantidade:,} Robux
+            <:star:1468051499195039775> **Valor estimado:** R$ {valor_reais:,.2f}
+            <:star:1468051499195039775> **Aberto em:** {datetime.now().strftime('%H:%M')}
             
             **🚀 VÁ ATÉ O TICKET:**
             Clique no link acima ou vá até o canal {channel.mention} para continuar!
@@ -656,7 +656,7 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             name=f"{emoji_tipo}┃{user.name}-{tipo_compra}-{random.randint(100,999)}",
             category=category,
             overwrites=overwrites,
-            topic=f"🎫 Ticket de {tipo_compra} • Cliente: {user.name} • Jogo: {jogo} • Gamepass: {gamepass} • Aberto em: {datetime.now().strftime('%d/%m %H:%M')}"
+            topic=f"🎫 Ticket de {tipo_compra} <:star:1468051499195039775> Cliente: {user.name} <:star:1468051499195039775> Jogo: {jogo} <:star:1468051499195039775> Gamepass: {gamepass} <:star:1468051499195039775> Aberto em: {datetime.now().strftime('%d/%m %H:%M')}"
         )
 
         data["usuarios"].setdefault(uid, {"tickets": [], "ticket_aberto": False})
@@ -687,13 +687,13 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             ✨ **Olá {user.mention}!** Seja muito bem-vindo(a) ao seu ticket! ✨
             
             **📋 INFORMAÇÕES DO SEU ATENDIMENTO:**
-            • **Tipo:** {tipo_compra} {emoji_tipo}
-            • **Jogo:** {jogo}
-            • **Gamepass:** {gamepass}
-            • **Seu Tier:** {user_tier} ({'Sem desconto' if tier_discount - boost_discount == 0 else f'{(tier_discount - boost_discount)*100:.0f}% desconto'}){' + ' + f'{boost_discount*100:.0f}% boost' if boost_discount > 0 else ''}
-            • **Ticket:** #{channel.name}
-            • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
-            • **Status:** 🔵 **EM ANDAMENTO**
+            <:star:1468051499195039775> **Tipo:** {tipo_compra} {emoji_tipo}
+            <:star:1468051499195039775> **Jogo:** {jogo}
+            <:star:1468051499195039775> **Gamepass:** {gamepass}
+            <:star:1468051499195039775> **Seu Tier:** {user_tier} ({'Sem desconto' if tier_discount - boost_discount == 0 else f'{(tier_discount - boost_discount)*100:.0f}% desconto'}){' + ' + f'{boost_discount*100:.0f}% boost' if boost_discount > 0 else ''}
+            <:star:1468051499195039775> **Ticket:** #{channel.name}
+            <:star:1468051499195039775> **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+            <:star:1468051499195039775> **Status:** 🔵 **EM ANDAMENTO**
             
             **🎯 PRÓXIMOS PASSOS:**
             1. **Informe o preço da gamepass** - Quanto custa no Roblox?
@@ -725,13 +725,13 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             )
         
         embed_ticket.set_footer(
-            text=f"Atendimento VIP para {user.name} • Obrigado por escolher nossa loja!",
+            text=f"Atendimento VIP para {user.name} <:star:1468051499195039775> Obrigado por escolher nossa loja!",
             icon_url=user.avatar.url if user.avatar else None
         )
         embed_ticket.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432067063838.gif")
 
         await channel.send(
-            content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>\n\n**📋 DETALHES DA COMPRA:**\n• **Tipo:** {tipo_compra}\n• **Jogo:** {jogo}\n• **Gamepass:** {gamepass}",
+            content=f"👋 **Olá {user.mention}!** <@&{STAFF_ROLE_ID}>\n\n**📋 DETALHES DA COMPRA:**\n<:star:1468051499195039775> **Tipo:** {tipo_compra}\n<:star:1468051499195039775> **Jogo:** {jogo}\n<:star:1468051499195039775> **Gamepass:** {gamepass}",
             embed=embed_ticket,
             view=TicketButtons()
         )
@@ -742,11 +742,11 @@ class GamepassPurchaseModal(discord.ui.Modal, title="🎮 Comprar Gamepass"):
             🎉 **Perfeito! Seu ticket foi criado e já está pronto!**
             
             **📋 DETALHES:**
-            • **Ticket:** {channel.mention}
-            • **Tipo:** {tipo_compra} {emoji_tipo}
-            • **Jogo:** {jogo}
-            • **Gamepass:** {gamepass}
-            • **Aberto em:** {datetime.now().strftime('%H:%M')}
+            <:star:1468051499195039775> **Ticket:** {channel.mention}
+            <:star:1468051499195039775> **Tipo:** {tipo_compra} {emoji_tipo}
+            <:star:1468051499195039775> **Jogo:** {jogo}
+            <:star:1468051499195039775> **Gamepass:** {gamepass}
+            <:star:1468051499195039775> **Aberto em:** {datetime.now().strftime('%H:%M')}
             
             **🚀 VÁ ATÉ O TICKET:**
             Clique no link acima ou vá até o canal {channel.mention} para continuar!
@@ -842,15 +842,15 @@ class RobuxToReaisModal(discord.ui.Modal, title="💎 Conversor: Robux → Reais
             embed.add_field(
                 name="💡 **COMO FUNCIONA?**",
                 value=f"""
-                • **Para receber {robux_liquidos:,} Robux líquidos**, você precisa criar uma gamepass de **{valor_gamepass:,} Robux**
-                • O Roblox retém **{percentual_taxa:.0f}%** ({taxa_roblox:,} Robux) como taxa
-                • Você fica com **{robux_liquidos:,} Robux** (70% do valor da gamepass)
-                • **Preço final:** R$ {preco_final:,.2f}
+                <:star:1468051499195039775> **Para receber {robux_liquidos:,} Robux líquidos**, você precisa criar uma gamepass de **{valor_gamepass:,} Robux**
+                <:star:1468051499195039775> O Roblox retém **{percentual_taxa:.0f}%** ({taxa_roblox:,} Robux) como taxa
+                <:star:1468051499195039775> Você fica com **{robux_liquidos:,} Robux** (70% do valor da gamepass)
+                <:star:1468051499195039775> **Preço final:** R$ {preco_final:,.2f}
                 """,
                 inline=False
             )
             embed.set_footer(
-                text=f"✨ Cálculo feito para {interaction.user.name} • 💰",
+                text=f"✨ Cálculo feito para {interaction.user.name} <:star:1468051499195039775> 💰",
                 icon_url=interaction.user.avatar.url if interaction.user.avatar else None
             )
             embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432609128488.gif")
@@ -942,7 +942,7 @@ class ReaisToRobuxModal(discord.ui.Modal, title="💸 Conversor: Reais → Robux
                     inline=False
                 )
             embed.set_footer(
-                text=f"✨ Conversão para {interaction.user.name} • ⚡",
+                text=f"✨ Conversão para {interaction.user.name} <:star:1468051499195039775> ⚡",
                 icon_url=interaction.user.avatar.url if interaction.user.avatar else None
             )
             embed.set_thumbnail(url="https://cdn.discordapp.com/emojis/1128316432609128488.gif")
@@ -1017,11 +1017,11 @@ class PaymentConfirmationModal(discord.ui.Modal, title="💰 Confirmar Valor Pag
                     **✅ ÓTIMA NOTÍCIA! Seu pagamento foi confirmado com sucesso!**
                     
                     **📋 DETALHES DA TRANSAÇÃO:**
-                    • **Status:** ✅ **APROVADO**
-                    • **Valor Pago:** R$ {valor_pago:,.2f}
-                    • **Confirmado por:** {interaction.user.mention}
-                    • **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
-                    • **Ticket:** #{interaction.channel.id}
+                    <:star:1468051499195039775> **Status:** ✅ **APROVADO**
+                    <:star:1468051499195039775> **Valor Pago:** R$ {valor_pago:,.2f}
+                    <:star:1468051499195039775> **Confirmado por:** {interaction.user.mention}
+                    <:star:1468051499195039775> **Horário:** {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+                    <:star:1468051499195039775> **Ticket:** #{interaction.channel.id}
                     
                     **📦 DETALHES DA COMPRA:**
                     """,
@@ -1332,9 +1332,9 @@ class TicketButtons(discord.ui.View):
             **📌 ESTA COMPRA FOI CANCELADA PELO CLIENTE**
             
             **📋 DETALHES:**
-            • **Cancelado por:** {interaction.user.mention}
-            • **Horário:** {datetime.now().strftime('%d/%m às %H:%M')}
-            • **Motivo:** Solicitado pelo cliente
+            <:star:1468051499195039775> **Cancelado por:** {interaction.user.mention}
+            <:star:1468051499195039775> **Horário:** {datetime.now().strftime('%d/%m às %H:%M')}
+            <:star:1468051499195039775> **Motivo:** Solicitado pelo cliente
             
             **📦 DETALHES DA COMPRA:**
             """,
@@ -1361,9 +1361,9 @@ class TicketButtons(discord.ui.View):
         embed_cancelado.add_field(
             name="**ℹ️ INFORMAÇÕES:**",
             value="""
-            • Ticket será arquivado automaticamente
-            • Para nova compra, abra um novo ticket
-            • Dúvidas? Entre em contato com nossa equipe
+            <:star:1468051499195039775> Ticket será arquivado automaticamente
+            <:star:1468051499195039775> Para nova compra, abra um novo ticket
+            <:star:1468051499195039775> Dúvidas? Entre em contato com nossa equipe
             """,
             inline=False
         )
@@ -1441,9 +1441,9 @@ class TicketButtons(discord.ui.View):
             **📌 ESTE TICKET FOI OFICIALMENTE ENCERRADO**
             
             **📋 DETALHES DO ENCERRAMENTO:**
-            • **Encerrado por:** {interaction.user.mention}
-            • **Horário:** {datetime.now().strftime('%d/%m às %H:%M')}
-            • **Status:** 🟢 **CONCLUÍDO**
+            <:star:1468051499195039775> **Encerrado por:** {interaction.user.mention}
+            <:star:1468051499195039775> **Horário:** {datetime.now().strftime('%d/%m às %H:%M')}
+            <:star:1468051499195039775> **Status:** 🟢 **CONCLUÍDO**
             
             **📦 DETALHES DA COMPRA:**
             """,
@@ -1470,9 +1470,9 @@ class TicketButtons(discord.ui.View):
         embed_fechado.add_field(
             name="**🎯 ATENDIMENTO FINALIZADO:**",
             value="""
-            • Todas as etapas foram concluídas
-            • Ticket será arquivado automaticamente
-            • Histórico preservado para consulta
+            <:star:1468051499195039775> Todas as etapas foram concluídas
+            <:star:1468051499195039775> Ticket será arquivado automaticamente
+            <:star:1468051499195039775> Histórico preservado para consulta
             """,
             inline=False
         )
@@ -1614,13 +1614,13 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         # Only show entries information if at least one bonus type is enabled
         if enable_roles or enable_invites:
             # Construir descrição do sistema de entries dinamicamente
-            entries_description = "• **Base:** 1 entry"
+            entries_description = "<:star:1468051499195039775> **Base:** 1 entry"
             
             if enable_roles:
-                entries_description += "\n• **Clientes:** +1 entries"
+                entries_description += "\n<:star:1468051499195039775> **Clientes:** +1 entries"
             
             if enable_invites:
-                entries_description += "\n• **Convites:** +1 por convite válido"
+                entries_description += "\n<:star:1468051499195039775> **Convites:** +1 por convite válido"
             
             embed.add_field(
                 name="🎯 **Sistema de Entries**",
@@ -1666,7 +1666,7 @@ class GiveawayModal(discord.ui.Modal, title="🎉 Criar Giveaway"):
         save_json(GIVEAWAYS_FILE, data)
         
         await interaction.response.send_message(
-            f"✅ **Giveaway criado com sucesso!**\nNome: {self.giveaway_name.value}\nPrêmio: {self.prize.value}\nDuração: {time_str}\n\n🎯 **Bônus Ativados:**\n• Cargos: {'✅' if enable_roles else '❌'}\n• Convites: {'✅' if enable_invites else '❌'}\n\n📝 **Nota:** Dados de participantes são armazenados apenas no JSON, não são exibidos publicamente.",
+            f"✅ **Giveaway criado com sucesso!**\nNome: {self.giveaway_name.value}\nPrêmio: {self.prize.value}\nDuração: {time_str}\n\n🎯 **Bônus Ativados:**\n<:star:1468051499195039775> Cargos: {'✅' if enable_roles else '❌'}\n<:star:1468051499195039775> Convites: {'✅' if enable_invites else '❌'}\n\n📝 **Nota:** Dados de participantes são armazenados apenas no JSON, não são exibidos publicamente.",
             ephemeral=True
         )
 
@@ -1830,7 +1830,7 @@ async def calcular(ctx, valor: str, tier: str = None):
             )
         
         embed.set_footer(
-            text=f"✨ Calculado {'(Preview)' if is_preview else ''} para {ctx.author.name} • ⚡ Use /comprar para abrir um ticket!",
+            text=f"✨ Calculado {'(Preview)' if is_preview else ''} para {ctx.author.name} <:star:1468051499195039775> ⚡ Use /comprar para abrir um ticket!",
             icon_url=ctx.author.avatar.url if ctx.author.avatar else None
         )
         
@@ -1841,9 +1841,9 @@ async def calcular(ctx, valor: str, tier: str = None):
             title="❌ **VALOR INVÁLIDO!**",
             description=f"""
             **📝 FORMATOS ACEITOS:**
-            • `/calcular 1000` → Calcula quanto custa 1000 Robux
-            • `/calcular 35,00` → Calcula quantos Robux você compra com R$ 35
-            • `/calcular 1000 Elite` → Preview do preço para tier Elite
+            <:star:1468051499195039775> `/calcular 1000` → Calcula quanto custa 1000 Robux
+            <:star:1468051499195039775> `/calcular 35,00` → Calcula quantos Robux você compra com R$ 35
+            <:star:1468051499195039775> `/calcular 1000 Elite` → Preview do preço para tier Elite
             
             **🏆 TIERS DISPONÍVEIS:** {', '.join([t['name'] for t in TIERS])}
             
@@ -1896,9 +1896,9 @@ async def compras(ctx, usuario: discord.Member = None):
     embed.add_field(
         name="📈 **DESEMPENHO**",
         value=f"""
-        • **Primeira compra:** {'Sim' if total > 0 else 'Não'}
-        • **Frequência:** {'Alta' if total >= 5 else 'Média' if total >= 2 else 'Baixa'}
-        • **Status:** {'Cliente VIP 🏆' if total >= 10 else 'Cliente Fiel ⭐' if total >= 5 else 'Cliente Novo 🌱'}
+        <:star:1468051499195039775> **Primeira compra:** {'Sim' if total > 0 else 'Não'}
+        <:star:1468051499195039775> **Frequência:** {'Alta' if total >= 5 else 'Média' if total >= 2 else 'Baixa'}
+        <:star:1468051499195039775> **Status:** {'Cliente VIP 🏆' if total >= 10 else 'Cliente Fiel ⭐' if total >= 5 else 'Cliente Novo 🌱'}
         """,
         inline=True
     )
@@ -1951,15 +1951,15 @@ async def loja(ctx):
         tier_counts[tier] = tier_counts.get(tier, 0) + 1
         tier_revenue[tier] = tier_revenue.get(tier, 0) + spent
     
-    tier_distribution = "\n".join([f"• **{tier}:** {count} clientes (R$ {tier_revenue[tier]:,.2f})" for tier, count in sorted(tier_counts.items(), key=lambda x: x[1], reverse=True)])
+    tier_distribution = "\n".join([f"<:star:1468051499195039775> **{tier}:** {count} clientes (R$ {tier_revenue[tier]:,.2f})" for tier, count in sorted(tier_counts.items(), key=lambda x: x[1], reverse=True)])
     
     embed.add_field(
-        name=f"{STATS_EMOJI} **ESTATÍSTICAS GERAIS**",
+        name=f"<:stats:1468051505780232324> **ESTATÍSTICAS GERAIS**",
         value=f"""
         **🛍️ Total de Compras:** `{total_compras}`
         **💰 Faturamento Total:** `R$ {total_faturamento:,.2f}`
         **👥 Clientes Únicos:** `{clientes_unicos}`
-        **{STATS_EMOJI} Ticket Médio:** `R$ {avg_order_value:,.2f}`
+        **<:stats:1468051505780232324> Ticket Médio:** `R$ {avg_order_value:,.2f}`
         **💎 Valor Médio por Cliente:** `R$ {avg_customer_value:,.2f}`
         """,
         inline=False
@@ -2013,15 +2013,15 @@ async def calculadora(interaction: discord.Interaction):
         considerando a **taxa de 30%** que o Roblox cobra!
         
         **🏆 SISTEMA DE TIERS**
-        """ + "\n".join([f"• **{tier['name']} (R$ {tier['min_spent']:,.0f}+ gastos):** {tier['discount']*100:.0f}% de desconto" for tier in TIERS]) + """
+        """ + "\n".join([f"<:star:1468051499195039775> **{tier['name']} (R$ {tier['min_spent']:,.0f}+ gastos):** {tier['discount']*100:.0f}% de desconto" for tier in TIERS]) + """
         
         **💰 ROBUX → REAIS**
-        • Descubra quanto custa X Robux em Reais
-        • Veja o valor exato da gamepass necessária
+        <:star:1468051499195039775> Descubra quanto custa X Robux em Reais
+        <:star:1468051499195039775> Veja o valor exato da gamepass necessária
         
         **💸 REAIS → ROBUX**
-        • Veja quantos Robux você compra com X Reais
-        • Veja o valor exato da gamepass necessária
+        <:star:1468051499195039775> Veja quantos Robux você compra com X Reais
+        <:star:1468051499195039775> Veja o valor exato da gamepass necessária
         """,
         color=discord.Color.gold()
     )
@@ -2043,7 +2043,7 @@ async def tiers(interaction: discord.Interaction):
     
     tier_list = []
     for tier in TIERS:
-        tier_list.append(f"**{tier['name']}** (R$ {tier['min_spent']:,.0f}+ gastos) → {tier['discount']*100:.0f}% desconto")
+        tier_list.append(f"**<:star:1468051499195039775> {tier['name']}** (R$ {tier['min_spent']:,.0f}+ gastos) → {tier['discount']*100:.0f}% desconto")
     
     embed.add_field(
         name="📊 **TIERS DISPONÍVEIS**",
@@ -2052,17 +2052,17 @@ async def tiers(interaction: discord.Interaction):
     )
     
     embed.add_field(
-        name="�<:boost:1468049708852187198><:boost:1468049708852187198> **DESCONTO PARA BOOSTERS**",
-        value=f"• Usuários boosters recebem **+1% desconto por boost pessoal** (máx. +{BOOST_DISCOUNT*100:.0f}%)\n• Agradecemos seu apoio! 💎",
+        name="<:boost:1468049708852187198>**DESCONTO PARA BOOSTERS**",
+        value=f"<:star:1468051499195039775> Usuários boosters recebem **+1% desconto por boost pessoal** (máx. +{BOOST_DISCOUNT*100:.0f}%)\n<:star:1468051499195039775> Agradecemos seu apoio! 💎",
         inline=False
     )
     
     embed.add_field(
-        name="�💡 **COMO FUNCIONA?**",
+        name=":question: **COMO FUNCIONA?**",
         value="""
-        • Gasto total determina seu tier
-        • Descontos são aplicados automaticamente
-        • Use `/calcular [valor] [tier]` para preview
+        <:star:1468051499195039775> Gasto total determina seu tier
+        <:star:1468051499195039775> Descontos são aplicados automaticamente
+        <:star:1468051499195039775> Use `/calcular [valor] [tier]` para preview
         """,
         inline=False
     )
@@ -2155,16 +2155,16 @@ async def set_tier_panel(interaction: discord.Interaction, channel: discord.Text
     
     embed.add_field(
         name="�<:boost:1468049708852187198><:boost:1468049708852187198> **DESCONTO PARA BOOSTERS**",
-        value=f"• Usuários boosters recebem **+1% desconto por boost pessoal** (máx. +{BOOST_DISCOUNT*100:.0f}%)\n• Agradecemos seu apoio! 💎",
+        value=f"<:star:1468051499195039775> Usuários boosters recebem **+1% desconto por boost pessoal** (máx. +{BOOST_DISCOUNT*100:.0f}%)\n<:star:1468051499195039775> Agradecemos seu apoio! 💎",
         inline=False
     )
     
     embed.add_field(
         name="�💡 **COMO FUNCIONA?**",
         value="""
-        • Gasto total determina seu tier
-        • Descontos são aplicados automaticamente
-        • Use `/calcular [valor] [tier]` para preview
+        <:star:1468051499195039775> Gasto total determina seu tier
+        <:star:1468051499195039775> Descontos são aplicados automaticamente
+        <:star:1468051499195039775> Use `/calcular [valor] [tier]` para preview
         """,
         inline=False
     )
@@ -2189,11 +2189,7 @@ async def comprar(interaction: discord.Interaction):
         ✨ **SEJA BEM-VINDO À NOSSA LOJA!** ✨
         
         **🚀 COMO FUNCIONA?**
-        1. Escolha abaixo o que quer comprar
-        2. Preencha as informações solicitadas
-        3. Abra um ticket de atendimento
-        4. Nossa equipe te atende rapidinho!
-        5. Receba seu produto em minutos! ⏰
+        1. Escolha abaixo o que quer comprar\n2. Preencha as informações solicitadas\n3. Abra um ticket de atendimento\n4. Nossa equipe te atende rapidinho!\n5. Receba seu produto em minutos! ⏰
         """,
         color=discord.Color.blurple()
     )
@@ -2293,12 +2289,12 @@ async def painelcalculadora(ctx, canal: discord.TextChannel = None):
         considerando a **taxa de 30%** que o Roblox cobra!
         
         **💰 ROBUX → REAIS**
-        • Descubra quanto custa X Robux em Reais
-        • Veja o valor exato da gamepass necessária
+        <:star:1468051499195039775> Descubra quanto custa X Robux em Reais
+        <:star:1468051499195039775> Veja o valor exato da gamepass necessária
         
         **💸 REAIS → ROBUX**
-        • Veja quantos Robux você compra com X Reais
-        • Veja o valor exato da gamepass necessária
+        <:star:1468051499195039775> Veja quantos Robux você compra com X Reais
+        <:star:1468051499195039775> Veja o valor exato da gamepass necessária
         """,
         color=discord.Color.gold()
     )
@@ -2331,9 +2327,9 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
         Como **booster ativo**, você recebe **descontos exclusivos** em todas as nossas compras!
         
         **🎁 DESCONTOS ESPECIAIS:**
-        {STAR_EMOJI} **+1% de desconto por boost que você dá**
-        {STAR_EMOJI} **Máximo de +5% adicional**
-        {STAR_EMOJI} **Aplicado automaticamente em todas as compras**
+        <:star:1468051499195039775> **+1% de desconto por boost que você dá**
+        <:star:1468051499195039775> **Máximo de +5% adicional**
+        <:star:1468051499195039775> **Aplicado automaticamente em todas as compras**
         """,
         color=discord.Color.purple()
     )
@@ -2345,9 +2341,9 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
     embed.add_field(
         name="🎯 **EXEMPLOS DE DESCONTO**",
         value=f"""
-        {STAR_EMOJI} **1 Boost:** +{BOOST_PER_BOOST*100:.0f}% desconto
-        {STAR_EMOJI} **2 Boosts:** +{min(BOOST_PER_BOOST*2*100, BOOST_DISCOUNT*100):.0f}% desconto
-        {STAR_EMOJI} **5+ Boosts:** +{BOOST_DISCOUNT*100:.0f}% desconto (máximo)
+        <:star:1468051499195039775> **1 Boost:** +{BOOST_PER_BOOST*100:.0f}% desconto
+        <:star:1468051499195039775> **2 Boosts:** +{min(BOOST_PER_BOOST*2*100, BOOST_DISCOUNT*100):.0f}% desconto
+        <:star:1468051499195039775> **5+ Boosts:** +{BOOST_DISCOUNT*100:.0f}% desconto (máximo)
         """,
         inline=False
     )
@@ -2355,10 +2351,10 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
     embed.add_field(
         name="💰 **COMO FUNCIONA?**",
         value="""
-        • O desconto cresce com cada boost que você dá
-        • Combina com seus descontos de tier
-        • Aplicado em Robux e Gamepass
-        • Renovado automaticamente
+        <:star:1468051499195039775> O desconto cresce com cada boost que você dá
+        <:star:1468051499195039775> Combina com seus descontos de tier
+        <:star:1468051499195039775> Aplicado em Robux e Gamepass
+        <:star:1468051499195039775> Renovado automaticamente
         """,
         inline=True
     )
@@ -2391,25 +2387,25 @@ async def painelcriador(ctx, canal: discord.TextChannel = None):
     )
     
     embed.add_field(
-        name="**🏷️ Criador Pequeno - Requisitos**",
-        value="**<:tiktok:1468048762449690774>TikTok**\n• Mínimo de **1.000 seguidores**\n• Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n• Conta ativa\n**<:youtube:1468048759563751676> YouTube**\n• Mínimo de **1.000 inscritos**\n• Vídeos recentes (últimos 30 dias)\n• Engajamento real",
+        name="**<a:tiltedhearth:1468051501065834647> Criador Pequeno - Requisitos**",
+        value="**<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **1.000 seguidores**\n<:star:1468051499195039775> Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n<:star:1468051499195039775> Conta ativa\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **1.000 inscritos**\n<:star:1468051499195039775> Vídeos recentes (últimos 30 dias)\n<:star:1468051499195039775> Engajamento real",
         inline=False
     )
     
     embed.add_field(
-        name="**🏷️ Criador Grande - Requisitos**",
-        value="**<:tiktok:1468048762449690774>TikTok**\n• Mínimo de **10.000 seguidores**\n• Vídeos frequentes com **15.000+ visualizações**\n• Divulgação consistente\n**<:youtube:1468048759563751676> YouTube**\n• Mínimo de **10.000 inscritos**\n• Vídeos com **5.000+ visualizações** de forma recorrente\n• Público ativo e engajado",
+        name="**<a:tiltedhearth:1468051501065834647> Criador Grande - Requisitos**",
+        value="**<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **10.000 seguidores**\n<:star:1468051499195039775> Vídeos frequentes com **15.000+ visualizações**\n<:star:1468051499195039775> Divulgação consistente\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **10.000 inscritos**\n<:star:1468051499195039775> Vídeos com **5.000+ visualizações** de forma recorrente\n<:star:1468051499195039775> Público ativo e engajado",
         inline=False
     )
     
     embed.add_field(
         name="🧾 Como se candidatar",
-        value="Abra um **ticket no canal de suporte**.\nEnvie obrigatoriamente:\n• Links de todas as plataformas\n• Plataforma principal",
+        value="Abra um **ticket no canal de suporte**.\nEnvie obrigatoriamente:\n<:star:1468051499195039775> Links de todas as plataformas\n<:star:1468051499195039775> Plataforma principal",
         inline=False
     )
     
     embed.add_field(
-        name=f"{ALERT_EMOJI} Regras gerais",
+        name=f"⚠️ Regras gerais",
         value=f"{STAR_EMOJI} Apenas **um código ativo** por criador\n{STAR_EMOJI} O criador define a **quantidade de usos** do código\n{STAR_EMOJI} O código pode ser removido por falta de divulgação, uso indevido, ou informações falsas\n{STAR_EMOJI} É proibido spam ou promessas fora do código",
         inline=False
     )
