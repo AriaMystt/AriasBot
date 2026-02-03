@@ -2388,13 +2388,13 @@ async def painelcriador(ctx, canal: discord.TextChannel = None):
     
     embed.add_field(
         name="**<a:tiltedhearth:1468051501065834647> Criador Pequeno - Requisitos**",
-        value="**\n<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **1.000 seguidores**\n<:star:1468051499195039775> Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n<:star:1468051499195039775> Conta ativa\n\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **1.000 inscritos**\n<:star:1468051499195039775> Vídeos recentes (últimos 30 dias)\n<:star:1468051499195039775> Engajamento real",
+        value="**<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **1.000 seguidores**\n<:star:1468051499195039775> Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n<:star:1468051499195039775> Conta ativa\n\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **1.000 inscritos**\n<:star:1468051499195039775> Vídeos recentes (últimos 30 dias)\n<:star:1468051499195039775> Engajamento real\n",
         inline=False
     )
     
     embed.add_field(
         name="**<a:tiltedhearth:1468051501065834647> Criador Grande - Requisitos**",
-        value="**\n<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **10.000 seguidores**\n<:star:1468051499195039775> Vídeos frequentes com **15.000+ visualizações**\n<:star:1468051499195039775> Divulgação consistente\n\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **10.000 inscritos**\n<:star:1468051499195039775> Vídeos com **5.000+ visualizações** de forma recorrente\n<:star:1468051499195039775> Público ativo e engajado",
+        value="**<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **10.000 seguidores**\n<:star:1468051499195039775> Vídeos frequentes com **15.000+ visualizações**\n<:star:1468051499195039775> Divulgação consistente\n\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **10.000 inscritos**\n<:star:1468051499195039775> Vídeos com **5.000+ visualizações** de forma recorrente\n<:star:1468051499195039775> Público ativo e engajado\n",
         inline=False
     )
     
