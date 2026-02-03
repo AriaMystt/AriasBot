@@ -1724,6 +1724,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # COMANDOS HÍBRIDOS (PREFIXO E SLASH) - MANTIDOS
 # ======================
 
+@bot.hybrid_command(name="ping", description="Mostra o ping do bot")
+async def ping(ctx):
+    """Mostra o ping do bot."""
+    await ctx.send(f"🏓 Pong! Latência: {round(bot.latency * 1000)}ms")
+
 @bot.hybrid_command(name="calcular", description="Calcula o valor da gamepass necessário para obter X robux líquidos")
 @app_commands.describe(
     valor="Valor em Robux ou Reais (ex: 1000 para robux ou 35,00 para reais)",
@@ -2376,26 +2381,20 @@ async def painelcriador(ctx, canal: discord.TextChannel = None):
     )
     
     embed.add_field(
-        name="📌 Plataformas aceitas",
-        value="🎵 **TikTok**\n▶️ **YouTube**",
+        name="🏷️ Criador Pequeno — Requisitos",
+        value="**TikTok**\n• Mínimo de **1.000 seguidores**\n• Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n• Conta ativa\n\n**YouTube**\n• Mínimo de **1.000 inscritos**\n• Vídeos recentes (últimos 30 dias)\n• Engajamento real",
         inline=False
     )
     
     embed.add_field(
-        name="🎵 Requisitos – TikTok",
-        value="• Mínimo de **5.000 seguidores**\n• Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n• Conta ativa\n• Conteúdo relacionado a Roblox ou público compatível",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="▶️ Requisitos – YouTube",
-        value="• Mínimo de **1.000 inscritos**\n• Vídeos recentes (últimos 30 dias)\n• Média de **1.000+ visualizações** por vídeo\n• Engajamento real",
+        name="🏷️ Criador Grande — Requisitos",
+        value="**TikTok**\n• Mínimo de **10.000 seguidores**\n• Vídeos frequentes com **50.000+ visualizações**\n• Divulgação consistente\n\n**YouTube**\n• Mínimo de **10.000 inscritos**\n• Vídeos com **5.000+ visualizações** de forma recorrente\n• Público ativo e engajado",
         inline=False
     )
     
     embed.add_field(
         name="🧾 Como se candidatar",
-        value="Abra um **ticket no canal de suporte** e selecione **Criador de Conteúdo / Parceria**.\n\nEnvie obrigatoriamente:\n• Links de todas as plataformas\n• Prints das métricas\n• Plataforma principal",
+        value="Abra um **ticket no canal de suporte**.\nEnvie obrigatoriamente:\n• Links de todas as plataformas\n• Plataforma principal",
         inline=False
     )
     
@@ -2407,7 +2406,7 @@ async def painelcriador(ctx, canal: discord.TextChannel = None):
     
     embed.add_field(
         name="⚠️ Regras gerais",
-        value="• Apenas **um código ativo** por criador\n• O criador define a **quantidade de usos** do código\n• O código pode ser removido por falta de divulgação ou uso indevido\n• É proibido spam ou promessas fora do código",
+        value="• Apenas **um código ativo** por criador\n• O criador define a **quantidade de usos** do código\n• O código pode ser removido por falta de divulgação, uso indevido, ou informações falsas\n• É proibido spam ou promessas fora do código",
         inline=False
     )
     
