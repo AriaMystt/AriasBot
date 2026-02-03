@@ -2154,13 +2154,13 @@ async def set_tier_panel(interaction: discord.Interaction, channel: discord.Text
     )
     
     embed.add_field(
-        name="�<:boost:1468049708852187198><:boost:1468049708852187198> **DESCONTO PARA BOOSTERS**",
+        name="<:boost:1468049708852187198><:boost:1468049708852187198> **DESCONTO PARA BOOSTERS**",
         value=f"<:star:1468051499195039775> Usuários boosters recebem **+1% desconto por boost pessoal** (máx. +{BOOST_DISCOUNT*100:.0f}%)\n<:star:1468051499195039775> Agradecemos seu apoio! 💎",
         inline=False
     )
     
     embed.add_field(
-        name="�💡 **COMO FUNCIONA?**",
+        name="❓ **COMO FUNCIONA?**",
         value="""
         <:star:1468051499195039775> Gasto total determina seu tier
         <:star:1468051499195039775> Descontos são aplicados automaticamente
@@ -2382,19 +2382,19 @@ async def painelcriador(ctx, canal: discord.TextChannel = None):
     
     embed = discord.Embed(
         title="🎥 Programa de Criadores de Conteúdo",
-        description="O Programa de Criadores de Conteúdo foi criado para apoiar quem divulga o servidor e a loja de forma ativa e consistente.\nCriadores aprovados recebem um **código exclusivo de desconto**, além de **comissões por cada compra realizada com o código**.\n\nA participação está sujeita à análise e aprovação da equipe.",
+        description="O Programa de Criadores de Conteúdo foi criado para apoiar quem divulga o servidor e a loja de forma ativa e consistente.\nCriadores aprovados recebem um **código exclusivo de desconto**, e **comissões por cada compra realizada com o código**.\n\nA participação está sujeita à análise e aprovação da equipe.\n",
         color=10181046
     )
     
     embed.add_field(
         name="**<a:tiltedhearth:1468051501065834647> Criador Pequeno - Requisitos**",
-        value="**<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **1.000 seguidores**\n<:star:1468051499195039775> Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n<:star:1468051499195039775> Conta ativa\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **1.000 inscritos**\n<:star:1468051499195039775> Vídeos recentes (últimos 30 dias)\n<:star:1468051499195039775> Engajamento real",
+        value="**\n<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **1.000 seguidores**\n<:star:1468051499195039775> Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n<:star:1468051499195039775> Conta ativa\n\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **1.000 inscritos**\n<:star:1468051499195039775> Vídeos recentes (últimos 30 dias)\n<:star:1468051499195039775> Engajamento real",
         inline=False
     )
     
     embed.add_field(
         name="**<a:tiltedhearth:1468051501065834647> Criador Grande - Requisitos**",
-        value="**<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **10.000 seguidores**\n<:star:1468051499195039775> Vídeos frequentes com **15.000+ visualizações**\n<:star:1468051499195039775> Divulgação consistente\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **10.000 inscritos**\n<:star:1468051499195039775> Vídeos com **5.000+ visualizações** de forma recorrente\n<:star:1468051499195039775> Público ativo e engajado",
+        value="**\n<:tiktok:1468048762449690774> TikTok**\n<:star:1468051499195039775> Mínimo de **10.000 seguidores**\n<:star:1468051499195039775> Vídeos frequentes com **15.000+ visualizações**\n<:star:1468051499195039775> Divulgação consistente\n\n**<:youtube:1468048759563751676> YouTube**\n<:star:1468051499195039775> Mínimo de **10.000 inscritos**\n<:star:1468051499195039775> Vídeos com **5.000+ visualizações** de forma recorrente\n<:star:1468051499195039775> Público ativo e engajado",
         inline=False
     )
     
