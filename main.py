@@ -2361,6 +2361,68 @@ async def painelboosters(ctx, canal: discord.TextChannel = None):
     await ctx.send(embed=embed_confirma, ephemeral=True)
 
 
+@bot.hybrid_command(name="painelcriador", description="Envia o painel de criadores de conteúdo")
+@app_commands.describe(canal="Canal onde enviar o painel (opcional)")
+@commands.has_permissions(administrator=True)
+async def painelcriador(ctx, canal: discord.TextChannel = None):
+    """Envia o painel de criadores de conteúdo em um canal específico."""
+    if canal is None:
+        canal = ctx.channel
+    
+    embed = discord.Embed(
+        title="🎥 Programa de Criadores de Conteúdo",
+        description="O Programa de Criadores de Conteúdo foi criado para apoiar quem divulga o servidor e a loja de forma ativa e consistente.\n\nCriadores aprovados recebem um **código exclusivo de desconto**, além de **comissões por cada compra realizada com o código**.\n\nA participação está sujeita à análise e aprovação da equipe.",
+        color=10181046
+    )
+    
+    embed.add_field(
+        name="📌 Plataformas aceitas",
+        value="🎵 **TikTok**\n▶️ **YouTube**",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🎵 Requisitos – TikTok",
+        value="• Mínimo de **5.000 seguidores**\n• Pelo menos **1 vídeo com 10.000+ visualizações** nos últimos 30 dias\n• Conta ativa\n• Conteúdo relacionado a Roblox ou público compatível",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="▶️ Requisitos – YouTube",
+        value="• Mínimo de **1.000 inscritos**\n• Vídeos recentes (últimos 30 dias)\n• Média de **1.000+ visualizações** por vídeo\n• Engajamento real",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🧾 Como se candidatar",
+        value="Abra um **ticket no canal de suporte** e selecione **Criador de Conteúdo / Parceria**.\n\nEnvie obrigatoriamente:\n• Links de todas as plataformas\n• Prints das métricas\n• Plataforma principal",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🏷️ Tiers de Criadores",
+        value="• **Criador Pequeno**\n• **Criador Grande**\n\nA definição do tier é feita **manualmente pela equipe**.",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="⚠️ Regras gerais",
+        value="• Apenas **um código ativo** por criador\n• O criador define a **quantidade de usos** do código\n• O código pode ser removido por falta de divulgação ou uso indevido\n• É proibido spam ou promessas fora do código",
+        inline=False
+    )
+    
+    embed.set_footer(text="A equipe se reserva o direito de decisão final sobre aprovações e permanência no programa.")
+    
+    await canal.send(embed=embed)
+    
+    embed_confirma = discord.Embed(
+        title="✅ **PAINEL DE CRIADORES ENVIADO!**",
+        description=f"✨ **Perfeito!** O painel de criadores de conteúdo foi enviado para {canal.mention}!",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed_confirma, ephemeral=True)
+
+
 @bot.hybrid_command(name="limpartickets", description="Limpa todos os dados de tickets")
 @commands.has_permissions(administrator=True)
 async def limpartickets(ctx):
