@@ -2052,8 +2052,8 @@ async def tiers(interaction: discord.Interaction):
     )
     
     embed.add_field(
-        name="� **DESCONTO PARA BOOSTERS**",
-        value=f"• Servidores boosters recebem **+{BOOST_DISCOUNT*100:.0f}% desconto adicional**\n• Agradecemos seu apoio! 💎",
+        name="�<:boost:1468049708852187198><:boost:1468049708852187198> **DESCONTO PARA BOOSTERS**",
+        value=f"• Usuários boosters recebem **+1% desconto por boost pessoal** (máx. +{BOOST_DISCOUNT*100:.0f}%)\n• Agradecemos seu apoio! 💎",
         inline=False
     )
     
@@ -2154,8 +2154,8 @@ async def set_tier_panel(interaction: discord.Interaction, channel: discord.Text
     )
     
     embed.add_field(
-        name="� **DESCONTO PARA BOOSTERS**",
-        value=f"• Servidores boosters recebem **+{BOOST_DISCOUNT*100:.0f}% desconto adicional**\n• Agradecemos seu apoio! 💎",
+        name="�<:boost:1468049708852187198><:boost:1468049708852187198> **DESCONTO PARA BOOSTERS**",
+        value=f"• Usuários boosters recebem **+1% desconto por boost pessoal** (máx. +{BOOST_DISCOUNT*100:.0f}%)\n• Agradecemos seu apoio! 💎",
         inline=False
     )
     
