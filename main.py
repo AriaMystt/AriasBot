@@ -107,8 +107,18 @@ def get_user_tier(user_id):
 def get_total_discount(member: discord.Member):
     """Retorna o desconto total do usuário incluindo tier e boost."""
     tier_name, tier_discount = get_user_tier(member.id)
-    # Count personal boosts
-    boost_count = sum(1 for sub in member.guild.premium_subscriptions if sub.user.id == member.id)
+    # Count personal boosts. Not all discord.py versions expose
+    # `guild.premium_subscriptions`, so provide a safe fallback.
+    boost_count = 0
+    try:
+        if hasattr(member.guild, 'premium_subscriptions') and member.guild.premium_subscriptions is not None:
+            boost_count = sum(1 for sub in member.guild.premium_subscriptions if getattr(sub, 'user', None) and sub.user.id == member.id)
+        else:
+            # Fallback: treat single active booster as 1 boost if `member.premium_since` is set
+            boost_count = 1 if getattr(member, 'premium_since', None) else 0
+    except Exception:
+        boost_count = 1 if getattr(member, 'premium_since', None) else 0
+
     boost_discount = min(BOOST_PER_BOOST * boost_count, BOOST_DISCOUNT) if boost_count > 0 else 0.0
     total_discount = tier_discount + boost_discount
     return tier_name, total_discount, boost_discount
